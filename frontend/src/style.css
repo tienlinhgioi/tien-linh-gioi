@@ -1,0 +1,507 @@
+@import "tailwindcss";
+@import "./game.css";
+
+@theme {
+  --color-jade: #2d6256;
+  --color-ivory: #f8f7f0;
+  --font-serif: "Palatino Linotype", "Book Antiqua", "Times New Roman", serif;
+  --font-sans: "Segoe UI", system-ui, sans-serif;
+}
+:root {
+  font-family: var(--font-sans);
+  color: #344e45;
+  background: #f6f6ef;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  font-size: 14px;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+}
+button,
+a,
+input {
+  -webkit-tap-highlight-color: transparent;
+}
+button,
+a {
+  touch-action: manipulation;
+}
+button {
+  cursor: pointer;
+  font: inherit;
+  transition:
+    background 0.2s,
+    color 0.2s,
+    transform 0.2s;
+}
+button:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+a {
+  color: inherit;
+  text-decoration: none;
+}
+button:focus-visible,
+a:focus-visible,
+input:focus-visible {
+  outline: 2px solid #599b82;
+  outline-offset: 4px;
+}
+button {
+  border: 0;
+  background: none;
+}
+h1,
+h2,
+h3,
+p {
+  margin: 0;
+}
+button:not(:disabled):active {
+  transform: translateY(1px);
+}
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font: 600 23px var(--font-serif);
+  white-space: nowrap;
+  color: #285547;
+}
+.brand-mark {
+  font-size: 29px;
+  width: 42px;
+  height: 48px;
+  display: grid;
+  place-content: center;
+  border: 1px solid #537561;
+  border-radius: 16px 3px 16px 3px;
+  font-weight: 400;
+}
+.brand small {
+  font-family: var(--font-sans);
+  display: block;
+  font-size: 8px;
+  letter-spacing: 1.7px;
+  margin-top: 5px;
+  font-weight: 500;
+  color: #7a8b7a;
+}
+.section-eyebrow {
+  font-size: 9px;
+  letter-spacing: 2px;
+  color: #8a967e;
+  font-weight: 500;
+}
+.primary-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 15px;
+  background: #35604e;
+  color: #f0f2dd;
+  padding: 12px 18px;
+  border-radius: 4px;
+  font-size: 10px;
+  white-space: nowrap;
+  box-shadow: 0 3px 8px #284c4010;
+}
+.primary-button:hover {
+  background: #244d3d;
+}
+.primary-button span {
+  font-size: 15px;
+  line-height: 12px;
+  color: #becdac;
+}
+.panel {
+  border: 1px solid #e0e4d6;
+  border-radius: 7px;
+  background: #fbfbf6;
+}
+.modal::backdrop {
+  background: #173b315e;
+  backdrop-filter: blur(5px);
+}
+.modal {
+  margin: auto;
+  color: #344e45;
+  padding: 35px;
+  max-width: 470px;
+  width: calc(100% - 36px);
+  position: relative;
+  box-shadow: 0 20px 80px #183d312b;
+  max-height: 85dvh;
+  overflow: auto;
+}
+.modal-close {
+  position: absolute;
+  right: 15px;
+  top: 10px;
+  font-size: 25px;
+  color: #85957b;
+}
+.modal h2 {
+  font: 28px var(--font-serif);
+  margin: 12px 0 23px;
+}
+.modal p,
+.modal li {
+  font-size: 13px;
+  line-height: 1.9;
+  color: #718266;
+  margin-bottom: 14px;
+}
+.modal ul {
+  list-style: none;
+  padding: 0;
+}
+.modal li {
+  border-left: 2px solid #c8d5b7;
+  padding-left: 15px;
+}
+.toast-enter-active,
+.toast-leave-active {
+  transition: opacity 0.2s;
+}
+.toast-enter-from,
+.toast-leave-to {
+  opacity: 0;
+}
+.immortal-scene {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  z-index: -1;
+  background:
+    radial-gradient(ellipse at 80% 20%, #f2f0d9 0%, transparent 43%),
+    linear-gradient(#d6e3d9, #bcd2c5 65%, #83aa98);
+}
+.immortal-scene canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.scene-fallback {
+  background: linear-gradient(150deg, #e6ecdc, #bad0bc 50%, #779b83);
+}
+.fallback-mountains {
+  position: absolute;
+  bottom: -20%;
+  font: 40vw/1 serif;
+  color: #5c8a7355;
+  left: 20%;
+  transform: scaleX(2);
+}
+.auth-topbar {
+  padding: 0 5%;
+  height: 98px;
+  border-bottom: 1px solid #e5e7dc;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #f9f9f3;
+}
+.topbar-motto {
+  font: italic 15px var(--font-serif);
+  color: #8c9c83;
+  letter-spacing: 1px;
+}
+.auth-page {
+  position: relative;
+  min-height: calc(100dvh - 98px);
+  isolation: isolate;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 50px 8% 70px;
+  overflow: hidden;
+  background: #cfdfd0;
+}
+.auth-page:before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(90deg, #e2ebdc20, #c9dbcc00 50%, #cadacc80);
+}
+.auth-page .immortal-scene {
+  inset: 0 -10% 0 -30%;
+}
+.auth-landscape-copy {
+  position: absolute;
+  left: 8%;
+  top: 10%;
+  color: #355d4b;
+}
+.auth-landscape-copy .section-eyebrow {
+  font-size: 10px;
+  color: #78947c;
+}
+.auth-landscape-copy h2 {
+  font: 400 clamp(40px, 4vw, 65px) var(--font-serif);
+  margin: 15px 0;
+}
+.auth-landscape-copy p {
+  font: 20px/1.8 var(--font-serif);
+  letter-spacing: 1px;
+  color: #66866d;
+}
+.vertical-poem {
+  white-space: nowrap;
+  position: absolute;
+  top: 240px;
+  left: 0;
+  writing-mode: vertical-rl;
+  letter-spacing: 5px;
+  font: 14px/2 var(--font-serif);
+  color: #78927c;
+}
+.auth-card {
+  position: relative;
+  width: 410px;
+  padding: 33px 38px 24px;
+  background: #fcfcf1ed;
+  border: 1px solid #ffffefba;
+  box-shadow: 0 20px 80px #365b4321;
+  border-radius: 9px;
+  backdrop-filter: blur(18px);
+  text-align: center;
+}
+.auth-card > .section-eyebrow {
+  font-size: 8px;
+  letter-spacing: 1.8px;
+}
+.auth-seal {
+  width: 43px;
+  height: 49px;
+  border: 1px solid #a0ae8f;
+  color: #648365;
+  display: grid;
+  place-items: center;
+  font-family: var(--font-serif);
+  font-size: 29px;
+  border-radius: 16px 3px 16px 3px;
+  margin: 20px auto 15px;
+}
+.auth-card h1 {
+  font: 29px var(--font-serif);
+  color: #385b45;
+}
+.auth-intro {
+  font-size: 11px;
+  line-height: 1.9;
+  color: #87947a;
+  margin: 10px 0 22px;
+}
+.auth-tabs {
+  display: flex;
+  border-bottom: 1px solid #dee4d1;
+  margin-bottom: 20px;
+}
+.auth-tabs button {
+  width: 50%;
+  color: #929e83;
+  padding: 10px;
+  font-size: 12px;
+  border-bottom: 2px solid transparent;
+}
+.auth-tabs button.selected {
+  border-bottom-color: #668b65;
+  color: #426749;
+}
+.auth-card form {
+  text-align: left;
+}
+.auth-card label {
+  display: block;
+  font-size: 10px;
+  color: #7b8c70;
+  margin: 13px 0 8px;
+}
+.auth-card input {
+  border: 1px solid #dce3ce;
+  background: #f8f9ef;
+  border-radius: 4px;
+  display: block;
+  width: 100%;
+  padding: 12px 13px;
+  color: #456645;
+  font: 12px var(--font-sans);
+}
+.auth-card input::placeholder {
+  color: #98a38a;
+  font-size: 11px;
+}
+.auth-submit {
+  width: 100%;
+  margin-top: 24px;
+  padding: 14px;
+  font-size: 12px;
+}
+.auth-submit span {
+  margin-left: auto;
+}
+.auth-divider {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 21px 0 15px;
+  color: #9ca78c;
+  font-size: 9px;
+}
+.auth-divider:before,
+.auth-divider:after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: #e1e5d5;
+}
+.guest-button {
+  width: 100%;
+  border: 1px solid #d8e0c8;
+  color: #6d845d;
+  padding: 11px;
+  border-radius: 4px;
+  font-size: 10px;
+}
+.guest-button:hover {
+  background: #eef2e3;
+}
+.guest-button span {
+  float: right;
+}
+.demo-note {
+  font-size: 8px;
+  line-height: 1.8;
+  color: #89997a;
+  margin-top: 13px;
+}
+.auth-switch {
+  font-size: 9px;
+  color: #89997a;
+  margin-top: 18px;
+}
+.auth-switch button {
+  color: #63865d;
+  margin-left: 4px;
+}
+.form-error {
+  font-size: 11px;
+  color: #a6574a;
+  line-height: 1.7;
+  margin-top: 10px;
+}
+.auth-footer {
+  position: absolute;
+  bottom: 20px;
+  left: 0;
+  right: 0;
+  text-align: center;
+  letter-spacing: 2px;
+  font-size: 7px;
+  color: #dbe8d6;
+}
+.auth-footer span {
+  padding: 0 12px;
+}
+@media (max-width: 1000px) and (min-width: 701px) {
+  .auth-landscape-copy h2 {
+    font-size: 38px;
+  }
+  .auth-landscape-copy p {
+    font-size: 17px;
+  }
+  .auth-card {
+    width: 350px;
+    padding: 28px;
+  }
+  .auth-page {
+    padding-right: 4%;
+  }
+  .auth-landscape-copy {
+    left: 4%;
+  }
+}
+@media (max-width: 700px) {
+  .auth-topbar {
+    height: 78px;
+    padding: 0 23px;
+  }
+  .auth-topbar .brand {
+    font-size: 21px;
+  }
+  .auth-topbar .brand small {
+    font-size: 7px;
+  }
+  .topbar-motto {
+    display: none;
+  }
+  .auth-page {
+    min-height: calc(100dvh - 78px);
+    display: flex;
+    flex-direction: column;
+    padding: 32px 20px 60px;
+  }
+  .auth-landscape-copy {
+    position: static;
+    text-align: center;
+    margin-bottom: 30px;
+  }
+  .auth-landscape-copy h2 {
+    font-size: 40px;
+    margin: 9px 0;
+  }
+  .auth-landscape-copy .section-eyebrow {
+    font-size: 8px;
+    letter-spacing: 1.6px;
+  }
+  .auth-landscape-copy p {
+    font-size: 14px;
+    line-height: 1.7;
+  }
+  .vertical-poem {
+    display: none;
+  }
+  .auth-card {
+    width: 100%;
+    max-width: 390px;
+    padding: 26px 28px 23px;
+  }
+  .auth-card > .section-eyebrow {
+    font-size: 7px;
+  }
+  .auth-seal {
+    margin-top: 15px;
+  }
+  .auth-card h1 {
+    font-size: 27px;
+  }
+  .auth-page .immortal-scene {
+    inset: 0 -140% 0 -100%;
+  }
+  .auth-footer {
+    font-size: 6px;
+  }
+  .auth-intro {
+    font-size: 10px;
+  }
+  .modal {
+    padding: 30px 25px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *:before,
+  *:after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}
