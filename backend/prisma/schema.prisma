@@ -1,0 +1,34 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model Account {
+  id           Int      @id @default(autoincrement())
+  email        String   @unique
+  username     String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+}
+
+// Cảnh giới (mỗi cảnh có 10 tiểu cảnh, tiểu cảnh là số 1..10)
+model Realm {
+  id    Int    @id @default(autoincrement())
+  order Int    @unique
+  name  String @unique
+}
+
+enum MapKind {
+  SMALL
+  LARGE
+}
+
+model GameMap {
+  id   Int     @id @default(autoincrement())
+  name String  @unique
+  kind MapKind
+}
