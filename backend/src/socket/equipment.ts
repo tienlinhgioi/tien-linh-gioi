@@ -19,7 +19,7 @@ async function equipmentView(characterId: number) {
   const slots: Record<string, unknown> = {}
   for (const slot of SLOTS) {
     const r = rows.find((x) => x.slot === slot)
-    slots[slot] = r ? { code: r.item.code, name: r.item.name, atkBonus: r.item.atkBonus, hpBonus: r.item.hpBonus } : null
+    slots[slot] = r ? { code: r.item.code, name: r.item.name, quality: r.item.quality, atkBonus: r.item.atkBonus, hpBonus: r.item.hpBonus } : null
   }
   return slots
 }

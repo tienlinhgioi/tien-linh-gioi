@@ -12,6 +12,8 @@ import {
   maxHpOf, refreshRealm,
 } from './world'
 import { Ack, loadMe, charOf, guildRoom } from './common'
+import { registerSocial } from './social'
+import { registerTrade } from './trade'
 import { registerInventory } from './inventory'
 import { registerGuild } from './guild'
 import { registerEquipment, loadBonuses } from './equipment'
@@ -81,6 +83,7 @@ export async function initSocket(http: HttpServer, origin: string) {
       socket.join(mapRoom(map.id))
       const same = char.mapId === map.id
       const bonus = await loadBonuses(char.id)
+      const learned = await prisma.characterSkill.findMany({ where: { characterId: char.id } })
       const me: Player = {
         socketId: socket.id,
         characterId: char.id,
@@ -96,6 +99,7 @@ export async function initSocket(http: HttpServer, origin: string) {
         x: same ? char.posX : 0,
         y: same ? char.posY : 0,
         lastMoveAt: Date.now(),
+        skills: new Set([BASIC_SKILL, ...learned.map((x) => x.skillCode)]),
         skillReadyAt: {},
         dirty: false,
         visiblePlayers: new Set(),
@@ -138,24 +142,57 @@ export async function initSocket(http: HttpServer, origin: string) {
       const me = await charOf(socket)
       if (!me) return ack?.({ error: 'Chưa có nhân vật' })
       const msg = { channel, from: me.name, text, at: now }
+      // người đã chặn người gửi thì không nhận tin
+      const deliver = (room?: string) =>
+        [...io.sockets.sockets.values()]
+          .filter((x) => (!room || x.rooms.has(room)) && !x.data.blocked?.has(me.id))
+          .forEach((x) => x.emit('chat:message', msg))
       if (channel === 'guild') {
         const { guildId } = await prisma.character.findUniqueOrThrow({ where: { id: me.id } })
         if (!guildId) return ack?.({ error: 'Chưa ở trong bang' })
         last[channel] = now
-        io.to(guildRoom(guildId)).emit('chat:message', msg)
+        deliver(guildRoom(guildId))
         return ack?.({ ok: true })
       }
       last[channel] = now
-      if (channel === 'map') io.to(mapRoom(p!.mapId)).emit('chat:message', msg)
-      else io.emit('chat:message', msg)
+      deliver(channel === 'map' ? mapRoom(p!.mapId) : undefined)
       ack?.({ ok: true })
     })
 
-    // danh sách kỹ năng và kỹ năng đã mở khóa theo cảnh giới hiện tại
+    // danh sách kỹ năng: đã học, có thể học (đủ cảnh giới và điểm kỹ năng)
     socket.on('skill:list', async (ack?: Ack) => {
       const c = await prisma.character.findUnique({ where: { accountId }, include: { realm: true } })
       if (!c) return ack?.({ error: 'Chưa có nhân vật' })
-      ack?.({ skills: SKILLS.map((k) => ({ ...k, unlocked: c.realm.order >= k.minRealm })) })
+      const learned = new Set([BASIC_SKILL, ...(await prisma.characterSkill.findMany({ where: { characterId: c.id } })).map((x) => x.skillCode)])
+      ack?.({
+        points: c.skillPoints,
+        skills: SKILLS.map((k) => ({
+          ...k,
+          learned: learned.has(k.code),
+          canLearn: !learned.has(k.code) && c.realm.order >= k.minRealm && c.skillPoints >= k.cost,
+        })),
+      })
+    })
+
+    socket.on('skill:learn', async (data: unknown, ack?: Ack) => {
+      const parsed = z.object({ code: z.string() }).safeParse(data)
+      const c = await prisma.character.findUnique({ where: { accountId }, include: { realm: true } })
+      if (!parsed.success || !c) return ack?.({ error: 'Dữ liệu không hợp lệ' })
+      const k = SKILLS.find((x) => x.code === parsed.data.code)
+      if (!k) return ack?.({ error: 'Kỹ năng không tồn tại' })
+      if (k.code === BASIC_SKILL || (await prisma.characterSkill.findUnique({ where: { characterId_skillCode: { characterId: c.id, skillCode: k.code } } }))) {
+        return ack?.({ error: 'Đã học kỹ năng này' })
+      }
+      if (c.realm.order < k.minRealm) return ack?.({ error: 'Chưa đủ cảnh giới' })
+      const err = await prisma.$transaction(async (tx) => {
+        const paid = await tx.character.updateMany({ where: { id: c.id, skillPoints: { gte: k.cost } }, data: { skillPoints: { decrement: k.cost } } })
+        if (paid.count === 0) return 'Không đủ điểm kỹ năng'
+        await tx.characterSkill.create({ data: { characterId: c.id, skillCode: k.code } })
+        return null
+      })
+      if (err) return ack?.({ error: err })
+      players.get(socket.id)?.skills.add(k.code)
+      ack?.({ ok: true, points: c.skillPoints - k.cost })
     })
 
     // tấn công quái: { targetId, skill? } (mặc định đòn cơ bản)
@@ -186,6 +223,8 @@ export async function initSocket(http: HttpServer, origin: string) {
     registerGuild(io, socket)
     registerEquipment(io, socket)
     registerShop(io, socket)
+    registerSocial(io, socket)
+    registerTrade(io, socket)
 
     socket.on('disconnect', leave)
   })

@@ -45,6 +45,7 @@ model Character {
   realm      Realm               @relation(fields: [realmId], references: [id])
   subRealm   Int                 @default(1)
   exp        Int                 @default(0)
+  skillPoints Int                @default(0)
   guildId    Int?
   guild      Guild?              @relation(fields: [guildId], references: [id])
   inventory  InventoryItem[]
@@ -97,6 +98,7 @@ model Item {
   healHp    Int             @default(0)
   expGain   Int             @default(0)
   slot      String?
+  quality   String          @default("COMMON")
   atkBonus  Int             @default(0)
   hpBonus   Int             @default(0)
   drops     MonsterDrop[]
@@ -142,4 +144,27 @@ model Equipment {
   item        Item      @relation(fields: [itemId], references: [id])
 
   @@id([characterId, slot])
+}
+
+// Bạn bè (hai chiều, lưu 2 dòng) và chặn (một chiều). Không dùng khóa ngoại, code giữ tính toàn vẹn
+model Friend {
+  characterId Int
+  friendId    Int
+
+  @@id([characterId, friendId])
+}
+
+model Block {
+  characterId Int
+  blockedId   Int
+
+  @@id([characterId, blockedId])
+}
+
+// Kỹ năng đã học (đòn cơ bản luôn có sẵn, không lưu)
+model CharacterSkill {
+  characterId Int
+  skillCode   String
+
+  @@id([characterId, skillCode])
 }

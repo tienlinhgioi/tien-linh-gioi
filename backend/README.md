@@ -8,7 +8,7 @@ npx prisma migrate dev
 npm run seed           # nạp cảnh giới, map, tiền tệ, vật phẩm, loại quái
 npm run dev            # cổng 3000
 ```
-Kiểm thử (cần server đang chạy): `node test/smoke.js`, `node test/world.js`, `node test/rules.js`, `node test/combat.js`, `node test/guild.js`, `node test/extra.js`
+Kiểm thử (cần server đang chạy): `node test/smoke.js`, `node test/world.js`, `node test/rules.js`, `node test/combat.js`, `node test/guild.js`, `node test/extra.js`, `node test/social.js`, `node test/trade.js`, `node test/gear.js`
 
 ## API (HTTP)
 - `POST /api/register` `{ email, username, password }` -> `{ token, username }`
@@ -24,7 +24,8 @@ Kiểm thử (cần server đang chạy): `node test/smoke.js`, `node test/world
 | `map:leave` | - | - |
 | `move` | `{ x, y }` | server từ chối (ngoài map hoặc quá tốc độ) thì gửi lại `move:rejected` `{ x, y }` là vị trí đúng |
 | `chat:send` | `{ channel: 'map' \| 'world' \| 'guild', text }` | ack `{ ok }` hoặc `{ error }`; mọi người nhận `chat:message` `{ channel, from, text, at }` |
-| `skill:list` | - | ack `{ skills: [{ code, name, damageMult, range, cooldownMs, minRealm, unlocked }] }` |
+| `skill:list` | - | ack `{ points, skills: [{ code, name, damageMult, range, cooldownMs, minRealm, cost, learned, canLearn }] }` |
+| `skill:learn` | `{ code }` | ack `{ ok, points }` hoặc `{ error }`; cần đủ cảnh giới và điểm kỹ năng (mỗi lần đột phá +1 điểm) |
 | `cast` | `{ targetId, skill? }` (id quái; mặc định `co_ban`) | ack `{ damage, hp, killed }` hoặc `{ error }`; người trong tầm nhận `monster:hit` `{ id, hp, damage, by, skill }`; người hạ quái nhận `player:loot` `{ exp, currencies, items }` và `player:exp` `{ exp, expNeeded }` |
 | `inventory:get` | - | ack `{ items: [{ code, name, count, healHp, expGain }] }` |
 | `inventory:use` | `{ code }` | ack `{ ok }` hoặc `{ error }`; hồi máu cần đang sống trong map |
@@ -37,9 +38,19 @@ Kiểm thử (cần server đang chạy): `node test/smoke.js`, `node test/world
 | `guild:kick` | `{ name }` | bang chủ đá mọi người, phó bang chỉ đá thành viên thường; người bị đá nhận `guild:kicked` |
 | `guild:transfer` | `{ name }` (chỉ bang chủ) | ack `{ guild }`; bang nhận `guild:leader_changed` |
 | `guild:promote` / `guild:demote` | `{ name }` (chỉ bang chủ) | ack `{ guild }`; bang nhận `guild:role_changed` `{ name, role }` |
-| `equipment:get` | - | ack `{ slots: { WEAPON, ARMOR } }` mỗi ô là `{ code, name, atkBonus, hpBonus }` hoặc null |
+| `equipment:get` | - | ack `{ slots: { WEAPON, ARMOR, HELMET, BOOTS, RING } }` mỗi ô là `{ code, name, quality, atkBonus, hpBonus }` hoặc null |
 | `equipment:equip` | `{ code }` (từ túi đồ) | ack `{ slots }`; đồ cũ trong ô quay về túi |
 | `equipment:unequip` | `{ slot }` | ack `{ slots }` |
+| `friend:list` | - | ack `{ friends: [{ name, online }], blocked: [name] }` |
+| `friend:request` | `{ name }` | ack `{ ok }`; người kia nhận `friend:requested` `{ from }` (hiệu lực 60 giây) |
+| `friend:accept` | `{ name }` (tên người mời) | ack `{ ok }`; người mời nhận `friend:added` `{ name }` |
+| `friend:remove` | `{ name }` | ack `{ ok }` |
+| `block:add` / `block:remove` | `{ name }` | chặn thì xóa quan hệ bạn, không nhận chat và whisper của người bị chặn |
+| `chat:whisper` | `{ to, text }` | cả hai nhận `chat:message` với `channel: 'whisper'`, `to` là tên người nhận |
+| `trade:request` | `{ name }` | ack `{ ok }`; người kia nhận `trade:requested` `{ from }` |
+| `trade:accept` | - | ack `{ ok }`; hai bên nhận `trade:started` `{ with }` rồi `trade:update` |
+| `trade:offer` | `{ items: [{ code, count }], currencies: [{ code, amount }] }` | đặt lại phần của mình, hủy xác nhận của cả hai; hai bên nhận `trade:update` `{ me, other }` |
+| `trade:confirm` / `trade:cancel` | - | cả hai xác nhận thì đổi trong một transaction, nhận `trade:completed`; lỗi hoặc hủy thì nhận `trade:cancelled` `{ reason }` |
 | `shop:list` | - | ack `{ npc, currency, goods: [{ code, name, price, sellPrice }] }` |
 | `shop:buy` / `shop:sell` | `{ code, count }` | ack `{ ok, spent \| earned }` hoặc `{ error }`; cần đang sống trong map và đứng gần NPC |
 | `cultivate:breakthrough` | - | ack `{ character }` hoặc `{ error }` |
@@ -54,9 +65,9 @@ Server phát xuống client (chỉ khi trong tầm nhìn `VIEW_RADIUS`):
 Vị trí được ghi vào MySQL mỗi 30 giây, khi rời map/ngắt kết nối và khi tắt server.
 Thông số tạm trong `src/data.ts` (bán kính nhìn, kích thước map, số quái, tên quái, tên 3 loại tiền) cần chỉnh theo thiết kế thật.
 Tu vi (`exp`) tăng khi hạ quái hoặc dùng vật phẩm. Đột phá tốn `expNeeded` = 100 × cảnh giới × tiểu cảnh; hết 10 tiểu cảnh thì sang cảnh giới kế.
-Chiến đấu: sát thương = hệ số kỹ năng × (10 × cảnh giới + atk trang bị). Đòn cơ bản tầm 150, hồi 1 giây; Kiếm Khí (mở ở cảnh giới 2) hệ số 3, tầm 250, hồi 5 giây, mỗi kỹ năng hồi riêng. Quái hồi sinh sau 5 giây, đuổi đánh người trong tầm 200.
+Chiến đấu: sát thương = hệ số kỹ năng × (10 × cảnh giới + atk trang bị). Đòn cơ bản luôn có; Kiếm Khí (cảnh giới 2, 1 điểm) và Lôi Phạt (cảnh giới 3, 2 điểm) phải học; mỗi kỹ năng hồi chiêu riêng. Quái hồi sinh sau 5 giây, đuổi đánh người trong tầm 200.
 Người chơi có máu = 100 × cảnh giới + máu trang bị (chỉ giữ trong RAM), chết thì sau 3 giây hồi sinh đầy máu ở (0, 0) cùng map.
-Trang bị có 2 ô (WEAPON, ARMOR); mặc đè thì đồ cũ về túi. NPC cửa hàng ở (50, 50) mọi map, phải đứng trong 100 đơn vị; mua bằng Linh Thạch, bán lại nửa giá.
+Trang bị có 5 ô (WEAPON, ARMOR, HELMET, BOOTS, RING), phẩm chất COMMON/RARE/EPIC; mặc đè thì đồ cũ về túi. NPC cửa hàng ở (50, 50) mọi map, phải đứng trong 100 đơn vị; mua bằng Linh Thạch, bán lại nửa giá.
 Bang: bang chủ rời thì nhường cho thành viên có id nhỏ nhất, hết người thì giải tán. Lời mời chỉ gửi được cho người đang online.
 Loại quái, vật phẩm, kỹ năng, giá cửa hàng, tỉ lệ rơi là dữ liệu mẫu trong `src/data.ts`; sửa rồi chạy lại `npm run seed` và khởi động lại server.
-Chưa có: nhiều ô trang bị hơn, học kỹ năng riêng, giao dịch giữa người chơi, chat riêng.
+Chưa có: cường hóa trang bị, đấu giá, nhóm đội, nhiệm vụ.

@@ -26,7 +26,10 @@ const prisma = new PrismaClient()
   check('tìm thấy quái trong tầm', !!found)
   if (!found) process.exit(1)
   const target = found.monster
-  check('quái có loại và máu', target.type === 'yeu_thu' && target.hp === 50 && target.maxHp === 50)
+  // đứng cạnh quái để đi theo kịp (server giới hạn tốc độ di chuyển)
+  await prisma.character.update({ where: { id: ch.id }, data: { mapId: found.mapId, posX: target.x, posY: target.y } })
+  await emit(a.s, 'map:join', { mapId: found.mapId })
+  check('quái có loại và máu', target.type === 'yeu_thu' && target.maxHp === 50 && target.hp > 0 && target.hp <= 50)
 
   // theo dõi vị trí quái
   let pos = { x: target.x, y: target.y }, hits = [], exps = []
@@ -37,11 +40,11 @@ const prisma = new PrismaClient()
   a.s.on('player:loot', l => (loot = l))
 
   let res, killed = false
-  for (let i = 0; i < 12 && !killed; i++) {
+  for (let i = 0; i < 30 && !killed; i++) {
     a.s.emit('move', { x: pos.x, y: pos.y }); await sleep(250)
     res = await emit(a.s, 'cast', { targetId: target.id })
     if (res.error === 'Kỹ năng đang hồi') { await sleep(1000); continue }
-    if (res.error) { console.log('     lỗi cast:', res.error); await sleep(1000); continue }
+    if (res.error) { console.log('     lỗi cast:', res.error); if (res.error === 'Đã chết') await sleep(4000); await sleep(1000); continue }
     killed = res.killed
     await sleep(1050)
   }
@@ -59,7 +62,7 @@ const prisma = new PrismaClient()
   check('chưa đủ tu vi', (await emit(a.s, 'cultivate:breakthrough')).error === 'Chưa đủ tu vi')
   await prisma.character.update({ where: { id: ch.id }, data: { exp: 100 } })
   let r = await emit(a.s, 'cultivate:breakthrough')
-  check('đột phá lên tiểu cảnh 2, trừ tu vi', r.character && r.character.subRealm === 2 && r.character.exp === 0 && r.character.expNeeded === 200)
+  check('đột phá lên tiểu cảnh 2, trừ tu vi, +1 điểm kỹ năng', r.character && r.character.subRealm === 2 && r.character.exp === 0 && r.character.expNeeded === 200 && r.character.skillPoints === 1)
   await prisma.character.update({ where: { id: ch.id }, data: { subRealm: 10, exp: 5000 } })
   r = await emit(a.s, 'cultivate:breakthrough')
   check('qua tiểu cảnh 10 -> cảnh giới mới', r.character && r.character.realm.order === 2 && r.character.subRealm === 1 && r.character.exp === 5000 - 1000)

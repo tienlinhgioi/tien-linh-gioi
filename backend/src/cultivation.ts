@@ -1,5 +1,5 @@
 import { prisma } from './lib/prisma'
-import { SUB_REALMS_PER_REALM, expNeeded } from './data'
+import { SUB_REALMS_PER_REALM, SKILL_POINTS_PER_BREAKTHROUGH, expNeeded } from './data'
 
 
 // Đột phá lên tiểu cảnh kế tiếp; hết 10 tiểu cảnh thì sang cảnh giới mới
@@ -19,7 +19,7 @@ export function breakthrough(accountId: number) {
       realmOrder = next.order
       subRealm = 1
     }
-    await tx.character.update({ where: { id: c.id }, data: { realmId, subRealm, exp: c.exp - need } })
+    await tx.character.update({ where: { id: c.id }, data: { realmId, subRealm, exp: c.exp - need, skillPoints: { increment: SKILL_POINTS_PER_BREAKTHROUGH } } })
     return { realmOrder, subRealm }
   })
 }

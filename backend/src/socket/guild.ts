@@ -2,7 +2,7 @@ import type { Server, Socket } from 'socket.io'
 import { z } from 'zod'
 import { prisma } from '../lib/prisma'
 import { GUILD_NAME_MIN, GUILD_NAME_MAX, GUILD_INVITE_TTL_MS } from '../data'
-import { Ack, charOf, guildRoom } from './common'
+import { Ack, charOf, guildRoom, socketOf } from './common'
 
 interface Invite {
   guildId: number
@@ -11,9 +11,6 @@ interface Invite {
   expiresAt: number
 }
 const invites = new Map<number, Invite>() // key: characterId được mời
-
-const socketOf = (io: Server, characterId: number) =>
-  [...io.sockets.sockets.values()].find((s) => s.data.char?.id === characterId)
 
 async function guildInfo(io: Server, guildId: number) {
   const g = await prisma.guild.findUnique({ where: { id: guildId }, include: { members: { orderBy: { id: 'asc' } } } })

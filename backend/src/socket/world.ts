@@ -22,6 +22,7 @@ export interface Player {
   x: number
   y: number
   lastMoveAt: number
+  skills: Set<string> // kỹ năng đã học
   skillReadyAt: Record<string, number>
   dirty: boolean
   visiblePlayers: Set<string> // socketId
@@ -184,7 +185,7 @@ export function castAt(io: Server, p: Player, targetId: number, skillCode: strin
   if (p.dead) return { error: 'Đã chết' }
   const skill = SKILLS.find((x) => x.code === skillCode)
   if (!skill) return { error: 'Kỹ năng không tồn tại' }
-  if (p.realmOrder < skill.minRealm) return { error: 'Chưa mở khóa kỹ năng' }
+  if (!p.skills.has(skill.code)) return { error: 'Chưa học kỹ năng' }
   const now = Date.now()
   if (now < (p.skillReadyAt[skill.code] ?? 0)) return { error: 'Kỹ năng đang hồi' }
   const m = monsters.find((x) => x.id === targetId)

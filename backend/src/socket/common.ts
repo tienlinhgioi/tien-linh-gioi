@@ -1,4 +1,4 @@
-import type { Socket } from 'socket.io'
+import type { Server, Socket } from 'socket.io'
 import { prisma } from '../lib/prisma'
 import { expNeeded } from '../data'
 
@@ -19,6 +19,7 @@ export async function loadMe(accountId: number) {
     realm: { order: c.realm.order, name: c.realm.name },
     subRealm: c.subRealm,
     exp: c.exp,
+    skillPoints: c.skillPoints,
     expNeeded: expNeeded(c.realm.order, c.subRealm),
     currencies: all.map((cur) => ({
       code: cur.code,
@@ -36,6 +37,12 @@ export async function charOf(socket: Socket) {
   const c = await prisma.character.findUnique({ where: { accountId: socket.data.accountId } })
   if (!c) return null
   socket.data.char = { id: c.id, name: c.name }
+  const blocked = await prisma.block.findMany({ where: { characterId: c.id } })
+  socket.data.blocked = new Set(blocked.map((b) => b.blockedId))
   if (c.guildId) socket.join(guildRoom(c.guildId))
   return socket.data.char as { id: number; name: string }
 }
+
+// socket đang online của nhân vật (chỉ thấy nhân vật đã được nạp qua charOf)
+export const socketOf = (io: Server, characterId: number) =>
+  [...io.sockets.sockets.values()].find((s) => s.data.char?.id === characterId)
