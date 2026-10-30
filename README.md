@@ -6,6 +6,26 @@ Tiên Linh Giới là dự án game nhập vai tu tiên 2D trên trình duyệt,
 
 Dự án gồm frontend có thể chơi thử và backend realtime được phát triển riêng. **Frontend hiện dùng dữ liệu mẫu, chưa kết nối backend**; đăng nhập, đăng ký và chat trên giao diện là mô phỏng, tiến trình đặt lại khi tải trang hoặc đăng xuất.
 
+## Hình ảnh game
+
+Ảnh chụp trực tiếp từ bản chơi mẫu hiện tại.
+
+### Khám phá Thanh Vân Cốc trên PC
+
+![Gameplay PC: nhân vật Thanh Vân giữa bản đồ tiên cảnh, quái, minimap và các nút chiến đấu](docs/images/gameplay-desktop.png)
+
+Điều khiển nhân vật bằng WASD, tiếp cận yêu thú và thi triển kỹ năng. Camera đi theo nhân vật; HUD hiển thị sinh lực, tiên vụ và tu vi.
+
+### Chơi trên mobile
+
+<img src="docs/images/gameplay-mobile.png" alt="Gameplay mobile: nhân vật trong Thanh Vân Cốc, joystick bên trái và nút chiến đấu bên phải" width="320" />
+
+Bố cục dọc với joystick cảm ứng, nút đánh thường, Kiếm Khí và hồi máu.
+
+### Bước vào tiên giới
+
+![Màn đăng nhập Tiên Linh Giới với tiên sơn, đình trên đảo nổi và biểu mẫu đăng nhập](docs/images/login-desktop.png)
+
 ## Trải nghiệm hiện có
 
 ### Frontend
