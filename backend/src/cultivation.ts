@@ -1,14 +1,6 @@
 import { prisma } from './lib/prisma'
 import { SUB_REALMS_PER_REALM, expNeeded } from './data'
 
-export async function addExp(characterId: number, amount: number) {
-  const c = await prisma.character.update({
-    where: { id: characterId },
-    data: { exp: { increment: amount } },
-    select: { exp: true },
-  })
-  return c.exp
-}
 
 // Đột phá lên tiểu cảnh kế tiếp; hết 10 tiểu cảnh thì sang cảnh giới mới
 export function breakthrough(accountId: number) {

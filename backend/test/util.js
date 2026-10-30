@@ -21,4 +21,17 @@ async function walkX(s, from, to) {
     await sleep(1050)
   }
 }
-module.exports = { io, parser, T, post, emit, sleep, connect, check, walkX }
+// Đặt vị trí lưu ở giữa map rồi vào map để tìm một con quái loại `type` trong tầm nhìn
+async function findMonster(prisma, s, charId, maps, type) {
+  for (let tries = 0; tries < 20; tries++) {
+    for (const m of maps) {
+      await prisma.character.update({ where: { id: charId }, data: { mapId: m.id, posX: 1000, posY: 1000 } })
+      const j = await emit(s, 'map:join', { mapId: m.id })
+      const mon = j.monsters.find(x => x.type === type)
+      if (mon) return { monster: mon, mapId: m.id }
+    }
+    await sleep(300)
+  }
+  return null
+}
+module.exports = { findMonster, io, parser, T, post, emit, sleep, connect, check, walkX }

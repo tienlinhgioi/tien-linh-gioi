@@ -1,6 +1,6 @@
 // Kiểm thử: chat, tấn công quái, tu vi, đột phá. Cần server đang chạy.
 const { PrismaClient } = require('@prisma/client')
-const { T, emit, sleep, connect, check } = require('./util')
+const { T, emit, sleep, connect, check, findMonster } = require('./util')
 const prisma = new PrismaClient()
 
 ;(async () => {
@@ -21,25 +21,20 @@ const prisma = new PrismaClient()
   check('chat thế giới gửi được', (await emit(a.s, 'chat:send', { channel: 'world', text: 'cả thế giới' })).ok === true)
   check('tin quá dài bị từ chối', !!(await emit(a.s, 'chat:send', { channel: 'map', text: 'x'.repeat(201) })).error)
 
-  // ---- tìm một quái: đặt vị trí lưu ở giữa map rồi vào lại để xem quái trong tầm ----
-  let target = null, mapId = null
-  for (let tries = 0; tries < 10 && !target; tries++) {
-    for (const m of maps) {
-      await prisma.character.update({ where: { id: ch.id }, data: { mapId: m.id, posX: 1000, posY: 1000 } })
-      const j = await emit(a.s, 'map:join', { mapId: m.id })
-      if (j.monsters.length) { target = j.monsters[0]; mapId = m.id; break }
-    }
-    if (!target) await sleep(300)
-  }
-  check('tìm thấy quái trong tầm', !!target)
-  if (!target) process.exit(1)
-  console.log('     (hp quái:', target.hp + ')')
+  // ---- tìm một con Yêu Thú (50 máu) trong tầm ----
+  const found = await findMonster(prisma, a.s, ch.id, maps, 'yeu_thu')
+  check('tìm thấy quái trong tầm', !!found)
+  if (!found) process.exit(1)
+  const target = found.monster
+  check('quái có loại và máu', target.type === 'yeu_thu' && target.hp === 50 && target.maxHp === 50)
 
   // theo dõi vị trí quái
   let pos = { x: target.x, y: target.y }, hits = [], exps = []
   a.s.on('monster:update', arr => { const m = arr.find(x => x.id === target.id); if (m) pos = m })
   a.s.on('monster:hit', h => hits.push(h))
   a.s.on('player:exp', e => exps.push(e))
+  let loot = null
+  a.s.on('player:loot', l => (loot = l))
 
   let res, killed = false
   for (let i = 0; i < 12 && !killed; i++) {
@@ -55,6 +50,10 @@ const prisma = new PrismaClient()
   check('hồi chiêu chặn đánh liên tục', (await Promise.all([emit(a.s, 'cast', { targetId: target.id }), emit(a.s, 'cast', { targetId: target.id })])).some(r => r.error))
   await sleep(200)
   check('nhận tu vi khi hạ quái', exps.length === 1 && exps[0].exp === 20 && exps[0].expNeeded === 100)
+  const gold = loot && loot.currencies.find(c => c.code === 'linh_thach')
+  check('rơi Linh Thạch 1-3', !!gold && gold.amount >= 1 && gold.amount <= 3 && loot.exp === 20)
+  const after = (await emit(a.s, 'player:me')).character
+  check('số dư tiền tệ cộng đúng', after.currencies.find(c => c.code === 'linh_thach').amount === gold.amount)
 
   // ---- đột phá ----
   check('chưa đủ tu vi', (await emit(a.s, 'cultivate:breakthrough')).error === 'Chưa đủ tu vi')

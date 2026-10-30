@@ -45,6 +45,9 @@ model Character {
   realm      Realm               @relation(fields: [realmId], references: [id])
   subRealm   Int                 @default(1)
   exp        Int                 @default(0)
+  guildId    Int?
+  guild      Guild?              @relation(fields: [guildId], references: [id])
+  inventory  InventoryItem[]
   mapId      Int?
   map        GameMap?            @relation(fields: [mapId], references: [id])
   posX       Float               @default(0)
@@ -68,4 +71,58 @@ model CharacterCurrency {
   currency    Currency  @relation(fields: [currencyId], references: [id])
 
   @@id([characterId, currencyId])
+}
+
+// Quái theo loại: dropCurrency rơi ngẫu nhiên trong [dropMin, dropMax]
+model MonsterType {
+  id             Int           @id @default(autoincrement())
+  code           String        @unique
+  name           String
+  hp             Int
+  atk            Int
+  speed          Int
+  exp            Int
+  dropCurrencyId Int?
+  dropMin        Int           @default(0)
+  dropMax        Int           @default(0)
+  drops          MonsterDrop[]
+}
+
+model Item {
+  id        Int             @id @default(autoincrement())
+  code      String          @unique
+  name      String
+  healHp    Int             @default(0)
+  expGain   Int             @default(0)
+  drops     MonsterDrop[]
+  holders   InventoryItem[]
+}
+
+// chance: 0..1
+model MonsterDrop {
+  monsterTypeId Int
+  itemId        Int
+  chance        Float
+  monsterType   MonsterType @relation(fields: [monsterTypeId], references: [id])
+  item          Item        @relation(fields: [itemId], references: [id])
+
+  @@id([monsterTypeId, itemId])
+}
+
+model InventoryItem {
+  characterId Int
+  itemId      Int
+  count       Int       @default(0)
+  character   Character @relation(fields: [characterId], references: [id])
+  item        Item      @relation(fields: [itemId], references: [id])
+
+  @@id([characterId, itemId])
+}
+
+model Guild {
+  id        Int         @id @default(autoincrement())
+  name      String      @unique
+  leaderId  Int
+  createdAt DateTime    @default(now())
+  members   Character[]
 }

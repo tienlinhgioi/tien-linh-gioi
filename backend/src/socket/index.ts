@@ -1,37 +1,19 @@
-import { Server, Socket } from 'socket.io'
+import { Server } from 'socket.io'
 import parser from 'socket.io-msgpack-parser'
 import type { Server as HttpServer } from 'http'
 import { z } from 'zod'
 import { prisma } from '../lib/prisma'
 import { verifyToken } from '../lib/auth'
-import { SUB_REALMS_PER_REALM, SAVE_INTERVAL_MS, CHAT_MAX_LENGTH, CHAT_COOLDOWN_MS, expNeeded, MONSTER_EXP } from '../data'
-import { addExp, breakthrough } from '../cultivation'
-import { Player, players, mapRoom, enterMap, leaveMap, movePlayer, castAt, savePlayer, startLoops, spawnMonsters } from './world'
-
-type Ack = (res: unknown) => void
-
-async function loadMe(accountId: number) {
-  const c = await prisma.character.findUnique({
-    where: { accountId },
-    include: { realm: true, currencies: true },
-  })
-  if (!c) return null
-  const all = await prisma.currency.findMany({ orderBy: { id: 'asc' } })
-  return {
-    id: c.id,
-    name: c.name,
-    realm: { order: c.realm.order, name: c.realm.name },
-    subRealm: c.subRealm,
-    exp: c.exp,
-    expNeeded: expNeeded(c.realm.order, c.subRealm),
-    currencies: all.map((cur) => ({
-      code: cur.code,
-      name: cur.name,
-      amount: c.currencies.find((x) => x.currencyId === cur.id)?.amount ?? 0,
-    })),
-    map: c.mapId === null ? null : { id: c.mapId, x: c.posX, y: c.posY },
-  }
-}
+import { SUB_REALMS_PER_REALM, SAVE_INTERVAL_MS, CHAT_MAX_LENGTH, CHAT_COOLDOWN_MS, expNeeded } from '../data'
+import { breakthrough } from '../cultivation'
+import { giveLoot } from '../loot'
+import {
+  Player, players, mapRoom, enterMap, leaveMap, movePlayer, castAt, savePlayer, startLoops, spawnMonsters,
+  maxHpOf, refreshRealm,
+} from './world'
+import { Ack, loadMe, charOf, guildRoom } from './common'
+import { registerInventory } from './inventory'
+import { registerGuild } from './guild'
 
 export async function initSocket(http: HttpServer, origin: string) {
   const io = new Server(http, { parser, cors: { origin } })
@@ -56,6 +38,7 @@ export async function initSocket(http: HttpServer, origin: string) {
 
     // Thông tin người chơi; character = null nếu chưa tạo nhân vật
     socket.on('player:me', async (ack?: Ack) => {
+      await charOf(socket)
       ack?.({ character: await loadMe(accountId) })
     })
 
@@ -71,6 +54,8 @@ export async function initSocket(http: HttpServer, origin: string) {
       const first = await prisma.realm.findUnique({ where: { order: 1 } })
       if (!first) return ack?.({ error: 'Chưa có dữ liệu cảnh giới' })
       await prisma.character.create({ data: { accountId, name: parsed.data.name, realmId: first.id } })
+      socket.data.char = undefined
+      await charOf(socket)
       ack?.({ character: await loadMe(accountId) })
     })
 
@@ -88,6 +73,7 @@ export async function initSocket(http: HttpServer, origin: string) {
       if (mapId === null) return ack?.({ error: 'Chưa chọn map' })
       const map = await prisma.gameMap.findUnique({ where: { id: mapId } })
       if (!map) return ack?.({ error: 'Map không tồn tại' })
+      await charOf(socket)
       const old = players.get(socket.id)
       if (old) leaveMap(io, old)
       socket.join(mapRoom(map.id))
@@ -98,6 +84,9 @@ export async function initSocket(http: HttpServer, origin: string) {
         name: char.name,
         realmOrder: char.realm.order,
         subRealm: char.subRealm,
+        hp: maxHpOf(char.realm.order),
+        maxHp: maxHpOf(char.realm.order),
+        dead: false,
         mapId: map.id,
         x: same ? char.posX : 0,
         y: same ? char.posY : 0,
@@ -109,7 +98,7 @@ export async function initSocket(http: HttpServer, origin: string) {
       }
       const view = enterMap(io, me)
       void savePlayer(me)
-      ack?.({ x: me.x, y: me.y, ...view })
+      ack?.({ x: me.x, y: me.y, hp: me.hp, maxHp: me.maxHp, ...view })
     })
 
     const leave = () => {
@@ -132,7 +121,7 @@ export async function initSocket(http: HttpServer, origin: string) {
     // chat theo map hoặc thế giới, có giới hạn tần suất
     socket.on('chat:send', async (data: unknown, ack?: Ack) => {
       const parsed = z
-        .object({ channel: z.enum(['map', 'world']), text: z.string().trim().min(1).max(CHAT_MAX_LENGTH) })
+        .object({ channel: z.enum(['map', 'world', 'guild']), text: z.string().trim().min(1).max(CHAT_MAX_LENGTH) })
         .safeParse(data)
       if (!parsed.success) return ack?.({ error: 'Tin nhắn không hợp lệ' })
       const { channel, text } = parsed.data
@@ -141,10 +130,17 @@ export async function initSocket(http: HttpServer, origin: string) {
       if (now - (last[channel] ?? 0) < CHAT_COOLDOWN_MS[channel]) return ack?.({ error: 'Gửi quá nhanh' })
       const p = players.get(socket.id)
       if (channel === 'map' && !p) return ack?.({ error: 'Chưa vào map' })
-      const from = p?.name ?? (await prisma.character.findUnique({ where: { accountId } }))?.name
-      if (!from) return ack?.({ error: 'Chưa có nhân vật' })
+      const me = await charOf(socket)
+      if (!me) return ack?.({ error: 'Chưa có nhân vật' })
+      const msg = { channel, from: me.name, text, at: now }
+      if (channel === 'guild') {
+        const { guildId } = await prisma.character.findUniqueOrThrow({ where: { id: me.id } })
+        if (!guildId) return ack?.({ error: 'Chưa ở trong bang' })
+        last[channel] = now
+        io.to(guildRoom(guildId)).emit('chat:message', msg)
+        return ack?.({ ok: true })
+      }
       last[channel] = now
-      const msg = { channel, from, text, at: now }
       if (channel === 'map') io.to(mapRoom(p!.mapId)).emit('chat:message', msg)
       else io.emit('chat:message', msg)
       ack?.({ ok: true })
@@ -157,7 +153,9 @@ export async function initSocket(http: HttpServer, origin: string) {
       if (!p || !parsed.success) return ack?.({ error: 'Dữ liệu không hợp lệ' })
       const res = castAt(io, p, parsed.data.targetId)
       if ('killed' in res && res.killed) {
-        const exp = await addExp(p.characterId, MONSTER_EXP)
+        const loot = await giveLoot(p.characterId, res.typeId)
+        const { exp } = await prisma.character.findUniqueOrThrow({ where: { id: p.characterId } })
+        socket.emit('player:loot', loot)
         socket.emit('player:exp', { exp, expNeeded: expNeeded(p.realmOrder, p.subRealm) })
       }
       ack?.(res)
@@ -168,12 +166,12 @@ export async function initSocket(http: HttpServer, origin: string) {
       const res = await breakthrough(accountId)
       if ('error' in res) return ack?.(res)
       const p = players.get(socket.id)
-      if (p) {
-        p.realmOrder = res.realmOrder
-        p.subRealm = res.subRealm
-      }
+      if (p) refreshRealm(io, p, res.realmOrder, res.subRealm)
       ack?.({ character: await loadMe(accountId) })
     })
+
+    registerInventory(io, socket)
+    registerGuild(io, socket)
 
     socket.on('disconnect', leave)
   })
