@@ -10,6 +10,7 @@ const origin = process.env.CLIENT_ORIGIN || 'http://localhost:5173'
 const app = express()
 app.use(cors({ origin }))
 app.use(express.json())
+app.get('/health', (_req, res) => res.send('ok'))
 app.use('/api', authRouter)
 
 const server = http.createServer(app)

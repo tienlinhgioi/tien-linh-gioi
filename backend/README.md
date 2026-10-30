@@ -85,3 +85,6 @@ Chưa có: cường hóa trang bị, đấu giá, nhóm đội, nhiệm vụ.
 
 ## CI (GitHub Actions)
 `.github/workflows/backend.yml` chạy mỗi lần push main hoặc PR có đổi `backend/`, song song trên MySQL 8 và Postgres 16: kiểm tra schema Postgres không lệch, `prisma migrate deploy`, `npm run seed`, build rồi chạy server và toàn bộ test trong `test/`. GitHub Actions chỉ chạy test; database và server game thật cần host riêng (xem phần Chạy).
+
+## Deploy server (Render)
+`render.yaml` ở thư mục gốc và `backend/Dockerfile` dựng sẵn server cho Render (gói free, có WebSocket, tự ngủ sau ~15 phút không dùng): Render Dashboard > New > Blueprint > chọn repo, rồi điền `DATABASE_URL` (chuỗi Supabase, xem `.env.example`). `JWT_SECRET` tự sinh, `CLIENT_ORIGIN` mặc định là origin GitHub Pages. Bản Docker chỉ dùng Postgres/Supabase. Kiểm tra sống: `GET /health`.

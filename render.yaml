@@ -1,0 +1,19 @@
+# Render Blueprint: Dashboard > New > Blueprint > chọn repo này.
+# Server game dùng WebSocket nên cần web service chạy liên tục (gói free tự ngủ sau ~15 phút không có truy cập).
+services:
+  - type: web
+    name: tien-linh-gioi-server
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      # Điền khi tạo: chuỗi kết nối Supabase (Session pooler), xem backend/.env.example
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      # Origin của frontend để CORS cho phép
+      - key: CLIENT_ORIGIN
+        value: https://tienlinhgioi.github.io
