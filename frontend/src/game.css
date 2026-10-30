@@ -1322,3 +1322,154 @@
     left: 50%;
   }
 }
+/* Cultivation RPG framing: jade lacquer, ivory panels and warm gold edges. */
+.player-hud,
+.map-hud,
+.target-hud {
+  border-color: #d7c38a;
+  box-shadow:
+    0 0 0 2px #284b3b88,
+    0 5px 20px #193f3430;
+  background: linear-gradient(125deg, #234d43f0, #41664be6);
+}
+.portrait {
+  border-color: #e2ca8b;
+}
+.game-menu button > span {
+  border-color: #d9c58e;
+  box-shadow:
+    inset 0 0 0 2px #567554,
+    0 3px 10px #264d3f55;
+}
+.quest-heading {
+  color: #637449;
+}
+.combat-controls .attack-action {
+  background: radial-gradient(#c9b976, #5e805b);
+  border-color: #f1dfa5;
+}
+.health-bar {
+  border-color: #b0ba80;
+}
+.game-shell {
+  box-shadow: inset 0 0 70px #234b3420;
+}
+.region-route {
+  position: absolute;
+  top: 130px;
+  left: 26px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 9px;
+  color: #edf0d4;
+  text-shadow: 0 1px 3px #28553b;
+  pointer-events: none;
+}
+.region-route span {
+  padding: 5px 9px;
+  background: #355d4580;
+  border-left: 2px solid #c4bc89;
+  border-radius: 0 4px 4px 0;
+}
+.region-route .current {
+  color: #fff0b5;
+  background: #365e49c9;
+}
+.region-route .locked {
+  opacity: 0.6;
+}
+.region-route small {
+  font-size: 7px;
+  margin-left: 5px;
+}
+.world-label {
+  display: none;
+}
+.portal-panel {
+  position: absolute;
+  left: 50%;
+  bottom: 145px;
+  transform: translateX(-50%);
+  background: #f7f3ddeb;
+  border: 1px solid #c8b77f;
+  border-radius: 7px;
+  padding: 16px;
+  color: #426854;
+  min-width: 245px;
+  text-align: center;
+  box-shadow: 0 6px 24px #23463333;
+  z-index: 4;
+}
+.portal-panel strong {
+  font: 20px var(--font-serif);
+}
+.portal-panel p {
+  font-size: 9px;
+  margin: 8px 0;
+  color: #82916c;
+}
+.portal-panel button {
+  display: block;
+  width: 100%;
+  padding: 10px 12px;
+  margin-top: 6px;
+  background: linear-gradient(#6a8c64, #456f52);
+  color: #faf0cc;
+  border: 1px solid #b8ba84;
+  border-radius: 4px;
+  font-size: 11px;
+}
+.portal-panel small {
+  font-size: 10px;
+}
+@media (max-width: 700px) {
+  .region-route {
+    left: 14px;
+    top: 98px;
+    font-size: 7px;
+    gap: 3px;
+  }
+  .region-route span {
+    padding: 4px 6px;
+  }
+  .region-route small {
+    font-size: 6px;
+  }
+  .portal-panel {
+    bottom: 210px;
+    padding: 12px;
+    min-width: 230px;
+    max-width: 85%;
+  }
+  .portal-panel strong {
+    font-size: 17px;
+  }
+}
+@media (max-height: 550px) and (min-width: 600px) {
+  .region-route {
+    top: 95px;
+    left: 255px;
+    flex-direction: row;
+    font-size: 6px;
+    gap: 3px;
+  }
+  .region-route span {
+    padding: 4px;
+  }
+  .region-route small {
+    display: none;
+  }
+  .portal-panel {
+    bottom: 40px;
+    left: 50%;
+    padding: 10px;
+    min-width: 210px;
+  }
+  .portal-panel p {
+    display: none;
+  }
+  .portal-panel strong {
+    font-size: 16px;
+  }
+}

@@ -53,3 +53,43 @@ test("sample monsters have unique identifiers, valid spawns and positive rewards
   );
   assert.ok(monsterSeeds.every((m) => canWalk(m) && m.maxHp > 0 && m.exp > 0));
 });
+
+test("combat experience unlocks successive regions and never skips level gates", async () => {
+  const { levelFromExp, canEnterRegion, facingDirection } =
+    await import("../src/data/game.ts");
+  assert.equal(levelFromExp(119), 1);
+  assert.equal(levelFromExp(120), 2);
+  assert.equal(canEnterRegion(1, 119), false);
+  assert.equal(canEnterRegion(1, 120), true);
+  assert.equal(canEnterRegion(2, 359), false);
+  assert.equal(canEnterRegion(2, 360), true);
+  assert.equal(canEnterRegion(4, 9999), false);
+  assert.equal(canEnterRegion(-1, 9999), false);
+  const directions = [
+    [1, 0],
+    [1, 1],
+    [0, 1],
+    [-1, 1],
+    [-1, 0],
+    [-1, -1],
+    [0, -1],
+    [1, -1],
+  ];
+  assert.deepEqual(
+    directions.map(([x, y]) => facingDirection(x!, y!)),
+    [0, 1, 2, 3, 4, 5, 6, 7],
+  );
+});
+
+test("character names and element-affiliated sect choices follow the brief", async () => {
+  const { validateCharacterName, elements, sects, realms } =
+    await import("../src/data/sects.ts");
+  assert.equal(validateCharacterName("A"), false);
+  assert.equal(validateCharacterName(" Thanh Vân "), true);
+  assert.equal(validateCharacterName("x".repeat(21)), false);
+  assert.equal(elements.length, 5);
+  assert.equal(realms.length, 11);
+  assert.ok(
+    elements.every((e) => sects.filter((s) => s.element === e.id).length === 1),
+  );
+});

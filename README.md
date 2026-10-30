@@ -8,6 +8,13 @@ Dự án gồm frontend có thể chơi thử và backend realtime được phá
 
 ## Hình ảnh game
 
+### Khởi động và tạo nhân vật — thủy mặc tiên cảnh
+
+![Khởi động Tiên Linh Giới: nền núi mực, chọn máy chủ và ngũ hành](docs/images/title-desktop.png)
+
+![Tạo nhân vật: tên, ngũ hành, tông môn và avatar](docs/images/create-character.png)
+
+
 Ảnh chụp trực tiếp từ bản chơi mẫu hiện tại.
 
 ### Khám phá Thanh Vân Cốc trên PC
@@ -30,9 +37,11 @@ Bố cục dọc với joystick cảm ứng, nút đánh thường, Kiếm Khí 
 
 ### Frontend
 
-- Màn đăng nhập/đăng ký mẫu và chế độ trải nghiệm nhanh với nhân vật Thanh Vân.
+- Màn khởi động toàn màn hình, máy chủ mẫu, ngũ hành, đăng nhập/đăng ký và tạo nhân vật với tông môn, avatar.
 - Tọa Vực — bản đồ Thanh Vân Cốc góc nhìn thứ ba 2D từ trên xuống, camera theo nhân vật.
-- Di chuyển qua đường mòn, cây cối, đình và cầu qua suối; có va chạm địa hình.
+- Di chuyển tám hướng với tư thế chạy/ra đòn, camera theo nhân vật và va chạm địa hình.
+- Cày quái lên cấp, qua cổng sang Trúc Ảnh Lâm (cấp 2) và Huyền Nguyệt Sơn (cấp 4).
+- Hiệu ứng vệt chém, kiếm khí bay, vòng phép và hạt sáng trúng đòn.
 - Chiến đấu với Mộc Linh và Thanh Lang: đánh thường, Kiếm Khí, hồi chiêu, sinh lực và hồi sinh.
 - Nhận tu vi, linh thạch, linh thảo khi hạ quái; có tiên vụ mẫu, túi đồ, nhật ký và minimap.
 - Bố cục riêng cho PC và mobile, joystick cảm ứng hỗ trợ cả màn hình dọc và ngang.
@@ -70,7 +79,7 @@ npm ci
 npm run dev
 ```
 
-Vite mặc định chạy ở cổng **5173**. Bấm **Trải nghiệm với nhân vật mẫu** để vào Thanh Vân Cốc. Không cần khởi động backend, cài MySQL hay cung cấp tài khoản thật cho bản mẫu.
+Vite mặc định chạy ở cổng **5173**. Bấm **Vào trò chơi**, chọn đăng nhập mẫu hoặc trải nghiệm, rồi tạo nhân vật để vào Thanh Vân Cốc. Không cần khởi động backend, cài MySQL hay cung cấp tài khoản thật cho bản mẫu.
 
 | Thao tác    | PC                  | Mobile            |
 | ----------- | ------------------- | ----------------- |

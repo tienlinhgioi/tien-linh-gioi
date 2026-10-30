@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "./game.css";
+@import "./onboarding.css";
 
 @theme {
   --color-jade: #2d6256;

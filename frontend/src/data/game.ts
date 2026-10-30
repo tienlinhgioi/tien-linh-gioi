@@ -125,3 +125,52 @@ export const monsterSeeds: MonsterSeed[] = [
     exp: 30,
   },
 ];
+
+export const regions = [
+  {
+    mapName: "Tọa Vực",
+    kind: "small",
+    name: "Thanh Vân Cốc",
+    minimumLevel: 1,
+    tint: 0xffffff,
+    monsterPrefix: "",
+    multiplier: 1,
+  },
+  {
+    mapName: "Vong Vực",
+    kind: "small",
+    name: "Trúc Ảnh Lâm",
+    minimumLevel: 2,
+    tint: 0xb9d9c5,
+    monsterPrefix: "Trúc ",
+    multiplier: 1.5,
+  },
+  {
+    mapName: "Sơn Vực",
+    kind: "small",
+    name: "Huyền Nguyệt Sơn",
+    minimumLevel: 4,
+    tint: 0xbfc4e6,
+    monsterPrefix: "Huyền ",
+    multiplier: 2.2,
+  },
+  {
+    mapName: "Hắc Thiên Giới",
+    kind: "large",
+    name: "Hắc Thiên Giới",
+    minimumLevel: 7,
+    tint: 0x9eabc7,
+    monsterPrefix: "Hắc ",
+    multiplier: 3,
+  },
+] as const;
+export function levelFromExp(exp: number) {
+  return 1 + Math.floor(Math.max(0, exp) / 120);
+}
+export function canEnterRegion(index: number, exp: number) {
+  const region = regions[index];
+  return !!region && levelFromExp(exp) >= region.minimumLevel;
+}
+export function facingDirection(x: number, y: number): number {
+  return (Math.round(Math.atan2(y, x) / (Math.PI / 4)) + 8) % 8;
+}

@@ -1,32 +1,55 @@
 <script setup lang="ts">
 import { ref } from "vue";
+import TitleScreen from "./components/TitleScreen.vue";
+import CharacterCreation from "./components/CharacterCreation.vue";
 import AuthPanel from "./components/AuthPanel.vue";
 import ImmortalScene from "./components/ImmortalScene.vue";
 import GameWorld from "./components/GameWorld.vue";
-const player = ref("");
+import type { CharacterProfile } from "./data/sects";
+const screen = ref<"title" | "auth" | "create" | "game">("title");
+const character = ref<CharacterProfile>({
+  name: "Thanh Vân",
+  element: "thuy",
+  sect: "Hàn Nguyệt Cung",
+  avatar: 1,
+});
+function create(profile: CharacterProfile) {
+  character.value = profile;
+  screen.value = "game";
+}
 </script>
-
 <template>
-  <GameWorld v-if="player" :name="player" @logout="player = ''" />
-  <div v-else class="auth-shell">
+  <TitleScreen
+    v-if="screen === 'title'"
+    @start="screen = 'auth'"
+    @login="screen = 'auth'"
+  />
+  <div v-else-if="screen === 'auth'" class="auth-shell">
     <header class="auth-topbar">
-      <a class="brand" href="#"
-        ><span class="brand-mark">仙</span
-        ><span>Tiên Linh Giới<small>MỘT CHỐN AN NHIÊN</small></span></a
+      <button class="brand" @click="screen = 'title'">
+        <span class="brand-mark">仙</span
+        ><span
+          >Tiên Linh Giới<small>← TRỞ VỀ MÀN KHỞI ĐỘNG</small></span
+        ></button
       ><span class="topbar-motto">Nhất niệm thanh tịnh · Vạn sự an nhiên</span>
     </header>
     <main class="auth-page">
       <ImmortalScene />
       <div class="auth-landscape-copy">
-        <div class="section-eyebrow">CHÀO MỪNG ĐẠO HỮU ĐẾN VỚI</div>
         <h2>Tiên Linh Giới</h2>
         <p>Một chốn an nhiên.<br />Một hành trình bất tận.</p>
-        <div class="vertical-poem">Giữa mây ngàn, tìm một thoáng bình yên.</div>
       </div>
-      <AuthPanel @enter="player = $event" />
-      <div class="auth-footer">
-        TIÊN LINH GIỚI <span>✦</span> PHIÊN BẢN TRẢI NGHIỆM
-      </div>
+      <AuthPanel @enter="screen = 'create'" />
     </main>
   </div>
+  <CharacterCreation
+    v-else-if="screen === 'create'"
+    @back="screen = 'auth'"
+    @create="create"
+  /><GameWorld
+    v-else
+    :name="character.name"
+    :profile="character"
+    @logout="screen = 'title'"
+  />
 </template>

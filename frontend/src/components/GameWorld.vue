@@ -1,6 +1,14 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import { Application, Container, Graphics, Text } from "pixi.js";
+import { createHero } from "../game/character";
+import { createEffects } from "../game/effects";
+import {
+  regions,
+  levelFromExp,
+  canEnterRegion,
+  facingDirection,
+} from "../data/game";
 import ModalDialog from "./ModalDialog.vue";
 import {
   ATTACK_RANGE,
@@ -13,11 +21,27 @@ import {
 } from "../data/game";
 import type { MonsterSeed, Point } from "../data/game";
 
-const props = defineProps<{ name: string }>();
+import { realms } from "../data/sects";
+import type { CharacterProfile } from "../data/sects";
+import { art } from "../data/art";
+const props = defineProps<{ name: string; profile?: CharacterProfile }>();
 const emit = defineEmits<{ logout: [] }>();
 const host = ref<HTMLDivElement>();
 const ready = ref(false);
 const failure = ref(false);
+const regionIndex = ref(0);
+const region = computed(() => regions[regionIndex.value]!);
+const level = computed(() => levelFromExp(exp.value));
+const nearPortal = computed(
+  () => distance(position.value, { x: 1200, y: 450 }) < 115,
+);
+let hero: ReturnType<typeof createHero> | undefined;
+let combatEffects: ReturnType<typeof createEffects> | undefined;
+let portal: Container | undefined;
+let terrain: Container | undefined;
+let biome: Graphics | undefined;
+let regionLabel: Text | undefined;
+let direction = 2;
 const hp = ref(360);
 const exp = ref(0);
 const coins = ref(1280);
@@ -33,7 +57,9 @@ const target = ref<{
   hp: number;
   maxHp: number;
 } | null>(null);
-const panel = ref<"inventory" | "help" | "journal" | null>(null);
+const panel = ref<
+  "inventory" | "help" | "journal" | "currencies" | "realms" | null
+>(null);
 const journal = ref([
   "Đã đến Thanh Vân Cốc. Hãy tìm Mộc Linh gần lối đi để luyện kiếm.",
 ]);
@@ -48,11 +74,15 @@ const chatOpen = ref(false);
 const questClaimed = ref(false);
 const fullScreen = ref(false);
 const panelTitle = computed(() =>
-  panel.value === "inventory"
-    ? "Túi Càn Khôn"
-    : panel.value === "journal"
-      ? "Nhật Ký Hành Trình"
-      : "Cách Chơi",
+  panel.value === "currencies"
+    ? "Tiền Tệ"
+    : panel.value === "realms"
+      ? "Cảnh Giới Tiên Đạo"
+      : panel.value === "inventory"
+        ? "Túi Càn Khôn"
+        : panel.value === "journal"
+          ? "Nhật Ký Hành Trình"
+          : "Cách Chơi",
 );
 let app: Application | undefined;
 let resizeObserver: ResizeObserver | undefined;
@@ -139,7 +169,12 @@ function attack(skill = false) {
     sword.alpha = 1;
     sword.scale.x = facing;
   }
-  const damage = skill ? 60 : 24;
+  direction = facingDirection(
+    mob.x - position.value.x,
+    mob.y - position.value.y,
+  );
+  combatEffects?.cast(position.value, mob, skill);
+  const damage = (skill ? 60 : 24) + (level.value - 1) * 6;
   mob.hp = Math.max(0, mob.hp - damage);
   mob.body.tint = 0xffe9b8;
   float(`−${damage}`, mob.x, mob.y, skill ? "#ffdc84" : "#fff5cd");
@@ -228,6 +263,7 @@ function keydown(event: KeyboardEvent) {
   if (key === " " || key === "j") attack();
   if (key === "q") attack(true);
   if (key === "1") heal();
+  if (key === "e" && nearPortal.value) travel(1);
   if (key === "i") openPanel("inventory");
   if (key === "h") openPanel("help");
 }
@@ -256,42 +292,6 @@ async function fullscreen() {
   } catch {
     notify("Trình duyệt không hỗ trợ chế độ toàn màn hình.");
   }
-}
-function buildCharacter(): Container {
-  const c = new Container();
-  c.addChild(
-    new Graphics().ellipse(0, 18, 20, 8).fill({ color: 0x294b3a, alpha: 0.22 }),
-  );
-  const g = new Graphics();
-  // Layered ivory hanfu, jade sash and long dark hair.
-  g.moveTo(-8, -17)
-    .quadraticCurveTo(-18, 0, -16, 16)
-    .quadraticCurveTo(0, 22, 16, 16)
-    .quadraticCurveTo(18, 0, 8, -17)
-    .fill(0xeaf1dd);
-  g.moveTo(-7, -10).lineTo(-24, 4).lineTo(-18, 12).lineTo(-6, 1).fill(0xfaf6df);
-  g.moveTo(7, -10).lineTo(24, 4).lineTo(18, 12).lineTo(6, 1).fill(0xfaf6df);
-  g.moveTo(-2, -12).lineTo(-8, 15).lineTo(3, 19).lineTo(7, -12).fill(0xa4c6ac);
-  g.rect(-10, -1, 20, 4).fill(0x426f62);
-  g.ellipse(0, -24, 12, 16).fill(0x263f39);
-  g.ellipse(0, -21, 8, 10).fill(0xf4d8bc);
-  g.moveTo(-11, -29)
-    .quadraticCurveTo(0, -44, 12, -28)
-    .lineTo(2, -27)
-    .lineTo(-4, -20)
-    .lineTo(-8, -27)
-    .fill(0x263f39);
-  g.moveTo(-8, -24)
-    .quadraticCurveTo(-15, -1, -9, 9)
-    .lineTo(-2, -5)
-    .lineTo(-4, -25)
-    .fill(0x263f39);
-  g.circle(0, -40, 5).fill(0x263f39).rect(-8, -40, 16, 2).fill(0xb8d1b0);
-  g.circle(3, -22, 1).fill(0x39473a);
-  g.moveTo(21, -12).lineTo(26, 16).stroke({ color: 0xb5cec1, width: 3 });
-  g.moveTo(19, 7).lineTo(29, 5).stroke({ color: 0xc7b57d, width: 3 });
-  c.addChild(g);
-  return c;
 }
 function buildMob(kind: "slime" | "wolf") {
   const body = new Container();
@@ -469,7 +469,7 @@ function renderMap(root: Container) {
     .stroke({ color: 0xd2c48d, width: 4 });
   root.addChild(shrine);
   const title = new Text({
-    text: "Thanh Vân Cốc",
+    text: region.value.name,
     style: {
       fontFamily: "Georgia, serif",
       fontSize: 26,
@@ -477,6 +477,7 @@ function renderMap(root: Container) {
       letterSpacing: 5,
     },
   });
+  regionLabel = title;
   title.anchor.set(0.5);
   title.position.set(1200, 395);
   root.addChild(title);
@@ -546,6 +547,9 @@ onMounted(async () => {
     entityLayer = new Container();
     entityLayer.sortableChildren = true;
     renderMap(world);
+    terrain = world.children[0];
+    biome = new Graphics();
+    world.addChild(biome);
     world.addChild(entityLayer);
     selection = new Graphics()
       .ellipse(0, 10, 32, 16)
@@ -583,7 +587,9 @@ onMounted(async () => {
         hitCooldown: 0,
       };
     });
-    actor = buildCharacter();
+    hero = createHero();
+    hero.pose(2, false, 0, false);
+    actor = hero.root;
     actor.position.set(position.value.x, position.value.y);
     entityLayer.addChild(actor);
     const name = new Text({
@@ -608,8 +614,34 @@ onMounted(async () => {
       .fill({ color: 0xfaf3cf, alpha: 0.85 });
     sword.alpha = 0;
     actor.addChild(sword);
+    portal = new Container();
+    portal.position.set(1200, 450);
+    portal.addChild(
+      new Graphics()
+        .ellipse(0, 8, 52, 20)
+        .stroke({ color: 0xf5d994, width: 3 })
+        .ellipse(0, -20, 28, 53)
+        .stroke({ color: 0xb9f2d8, width: 5 })
+        .ellipse(0, -20, 22, 46)
+        .fill({ color: 0x539c88, alpha: 0.28 }),
+    );
+    const portalText = new Text({
+      text: "TRUYỀN TỐNG · E",
+      style: {
+        fontFamily: "system-ui",
+        fontSize: 11,
+        fill: "#fff4cb",
+        stroke: { color: "#375d47", width: 3 },
+      },
+    });
+    portalText.anchor.set(0.5);
+    portalText.y = -85;
+    portal.addChild(portalText);
+    entityLayer.addChild(portal);
+    portal.zIndex = 450;
     effects = new Container();
     world.addChild(effects);
+    combatEffects = createEffects(effects);
     const resize = () => {
       if (!host.value || !world) return;
       const { width, height } = host.value.getBoundingClientRect();
@@ -630,6 +662,77 @@ onMounted(async () => {
     app = undefined;
   }
 });
+function travel(offset: number) {
+  if (!nearPortal.value || deadFor.value || panel.value || chatOpen.value)
+    return;
+  const next = regionIndex.value + offset;
+  if (!canEnterRegion(next, exp.value)) {
+    notify(
+      next >= regions.length
+        ? "Đã đến vùng cuối bản trải nghiệm."
+        : `Cần cấp ${regions[next]?.minimumLevel} để vào ${regions[next]?.name}.`,
+    );
+    return;
+  }
+  resetInput();
+  regionIndex.value = next;
+  target.value = null;
+  position.value = { x: 1200, y: 600 };
+  combatEffects?.clear();
+  if (terrain) terrain.tint = region.value.tint;
+  if (regionLabel) regionLabel.text = region.value.name;
+  biome?.clear();
+  if (biome && next > 0)
+    for (let i = 0; i < 32; i++) {
+      const x = 240 + ((i * 317) % 1930),
+        y = 250 + ((i * 193) % 1280);
+      if (!canWalk({ x, y }) || Math.abs(x - 1200) < 160) continue;
+      if (next === 1) {
+        biome
+          .moveTo(x, y)
+          .lineTo(x - 4, y - 90)
+          .moveTo(x + 13, y)
+          .lineTo(x + 17, y - 110)
+          .stroke({ color: 0x4e8267, width: 5 });
+        for (let j = 0; j < 4; j++)
+          biome
+            .moveTo(x, y - j * 20)
+            .quadraticCurveTo(x - 25, y - j * 20 - 25, x - 40, y - j * 20 - 12)
+            .moveTo(x + 15, y - j * 22)
+            .quadraticCurveTo(x + 42, y - j * 22 - 20, x + 48, y - j * 22 - 8)
+            .stroke({ color: 0x759c77, width: 3 });
+      } else {
+        biome
+          .moveTo(x - 14, y)
+          .lineTo(x - 5, y - 45)
+          .lineTo(x + 8, y - 66)
+          .lineTo(x + 20, y - 8)
+          .lineTo(x + 8, y + 7)
+          .closePath()
+          .fill({ color: 0x899aba, alpha: 0.75 })
+          .stroke({ color: 0xd6e5ee, width: 2 });
+        biome.circle(x + 30, y - 30, 3).fill({ color: 0xffefd1, alpha: 0.7 });
+      }
+    }
+  mobs.forEach((mob, i) => {
+    const seed = monsterSeeds[i]!;
+    mob.name = region.value.monsterPrefix + seed.name;
+    mob.maxHp = Math.round(seed.maxHp * region.value.multiplier);
+    mob.hp = mob.maxHp;
+    mob.exp = Math.round(seed.exp * region.value.multiplier);
+    mob.x = seed.x;
+    mob.y = seed.y;
+    mob.respawn = 0;
+    mob.hitCooldown = 0;
+    mob.view.visible = true;
+    (mob.view.children[1] as Text).text = mob.name;
+    mob.body.tint = region.value.tint;
+  });
+  notify(
+    `Đã đến ${region.value.name} · Yêu thú cấp ${region.value.minimumLevel}`,
+  );
+  addJournal(`Qua cổng đến ${region.value.name}.`);
+}
 function keyup(event: KeyboardEvent) {
   keys.delete(event.key.toLowerCase());
 }
@@ -648,6 +751,9 @@ function syncFullscreen() {
 function update(dt: number) {
   if (!app || !world || !actor || !playerHp) return;
   elapsed += dt;
+  combatEffects?.update(dt);
+  if (portal)
+    portal.alpha = reducedMotion ? 1 : 0.8 + Math.sin(elapsed * 2) * 0.2;
   if (elapsed - lastMapUpdate > 0.25) {
     minimapMobs.value = mobs
       .filter((m) => m.hp > 0)
@@ -681,6 +787,7 @@ function update(dt: number) {
   if (moving) {
     position.value = movePlayer(position.value, { x: dx, y: dy }, dt);
     if (dx) facing = dx > 0 ? 1 : -1;
+    direction = facingDirection(dx, dy);
   }
   actor.position.set(
     position.value.x,
@@ -691,6 +798,7 @@ function update(dt: number) {
           ? Math.sin(elapsed * 15) * 1.5
           : Math.sin(elapsed * 2) * 0.5),
   );
+  hero?.pose(direction, !!moving, elapsed, attackCooldown.value > 0.35);
   actor.zIndex = position.value.y;
   actor.alpha = deadFor.value ? 0.35 : 1;
   playerHp
@@ -711,7 +819,7 @@ function update(dt: number) {
       continue;
     }
     mob.hitCooldown = Math.max(0, mob.hitCooldown - dt);
-    mob.body.tint = 0xffffff;
+    mob.body.tint = region.value.tint;
     const d = distance(position.value, mob);
     if (!deadFor.value && !panel.value && !chatOpen.value) {
       const aggro = mob.kind === "wolf" ? 260 : 170;
@@ -722,7 +830,9 @@ function update(dt: number) {
         moveMob(mob, mob.spawn, 50, dt);
       }
       if (d < 60 && mob.hitCooldown === 0) {
-        const damage = mob.kind === "wolf" ? 22 : 12;
+        const damage = Math.round(
+          (mob.kind === "wolf" ? 22 : 12) * region.value.multiplier,
+        );
         hp.value = Math.max(0, hp.value - damage);
         mob.hitCooldown = 1.3;
         float(`−${damage}`, position.value.x, position.value.y, "#f5b2a0");
@@ -822,11 +932,22 @@ onBeforeUnmount(() => {
         aria-label="Mở túi nhân vật"
         @click="openPanel('inventory')"
       >
-        <span>清</span><b>6</b>
+        <img
+          v-if="profile && art(`avatar-${profile.avatar}.webp`)"
+          :src="art(`avatar-${profile.avatar}.webp`)"
+          alt="Avatar nhân vật"
+          class="game-avatar-image"
+        /><span v-else>{{
+          ["清", "月", "云", "岚", "竹", "霜"][(profile?.avatar || 1) - 1]
+        }}</span
+        ><b>{{ level }}</b>
       </button>
       <div class="player-bars">
         <div class="player-name">
-          {{ name }} <span>Luyện Khí · Tầng 6</span>
+          {{ name }}
+          <button aria-label="Xem cảnh giới" @click="openPanel('realms')">
+            Luyện Khí · Tầng {{ Math.min(10, level) }} ▾
+          </button>
         </div>
         <div
           class="health-bar"
@@ -843,17 +964,28 @@ onBeforeUnmount(() => {
       </div>
     </header>
     <section v-if="target" class="target-hud" aria-label="Quái đang chọn">
-      <div>{{ target.name }} <span>Yêu thú · Lv. 1</span></div>
+      <div>
+        {{ target.name }} <span>Yêu thú · Lv. {{ region.minimumLevel }}</span>
+      </div>
       <div class="target-bar">
         <i :style="{ width: (target.hp / target.maxHp) * 100 + '%' }"></i>
       </div>
       <small>{{ target.hp }} / {{ target.maxHp }}</small>
     </section>
 
+    <button
+      class="game-currencies"
+      aria-label="Xem toàn bộ tiền tệ"
+      @click="openPanel('currencies')"
+    >
+      <span><small>Linh Thạch</small>◈ {{ coins.toLocaleString("vi-VN") }}</span
+      ><span><small>Tiên Ngọc</small>◇ 60</span
+      ><span><small>Công Đức</small>✧ 100</span>
+    </button>
     <aside class="map-hud">
       <div class="map-name">
         <span>⌖</span>
-        <h1>Thanh Vân Cốc</h1>
+        <h1>{{ region.name }}</h1>
         <button aria-label="Bật toàn màn hình" @click="fullscreen">
           {{ fullScreen ? "⊡" : "⛶" }}
         </button>
@@ -881,7 +1013,7 @@ onBeforeUnmount(() => {
       </div>
       <p>
         {{ Math.round(position.x) }}, {{ Math.round(position.y) }}
-        <span>Vùng an toàn phía bắc</span>
+        <span>{{ region.mapName }}</span>
       </p>
     </aside>
 
@@ -891,7 +1023,7 @@ onBeforeUnmount(() => {
       </div>
       <h2>Thanh trừ yêu khí</h2>
       <p>
-        Hạ yêu thú trong Thanh Vân Cốc <b>{{ Math.min(kills, 3) }}/3</b>
+        Hạ yêu thú trong {{ region.name }} <b>{{ Math.min(kills, 3) }}/3</b>
       </p>
       <div class="quest-reward">
         ◈ 150 linh thạch <span>·</span> 2 Hồi Linh Đan
@@ -902,6 +1034,34 @@ onBeforeUnmount(() => {
       <div v-else class="quest-hint">Theo lối mòn, tìm Mộc Linh gần đình.</div>
     </aside>
 
+    <section
+      v-if="nearPortal"
+      class="portal-panel"
+      aria-label="Cổng chuyển map"
+    >
+      <strong>Truyền Tống Trận</strong>
+      <p>Cấp hiện tại: {{ level }} · Mở vùng bằng tu vi chiến đấu</p>
+      <button v-if="regionIndex > 0" @click="travel(-1)">
+        ← {{ regions[regionIndex - 1]?.name }}</button
+      ><button v-if="regionIndex < regions.length - 1" @click="travel(1)">
+        {{ regions[regionIndex + 1]?.name }} · Cấp
+        {{ regions[regionIndex + 1]?.minimumLevel }} →</button
+      ><small v-else>Đã khám phá vùng cuối bản mẫu.</small>
+    </section>
+    <div class="region-route">
+      <span
+        v-for="(r, index) in regions"
+        :key="r.name"
+        :class="{
+          current: index === regionIndex,
+          locked: !canEnterRegion(index, exp),
+        }"
+        >{{
+          index === regionIndex ? "◈" : canEnterRegion(index, exp) ? "◇" : "♙"
+        }}
+        {{ r.mapName }} <small>Lv.{{ r.minimumLevel }}</small></span
+      >
+    </div>
     <div class="world-label"><span>✦</span> TỌA VỰC <i>·</i> BẢN CHƠI MẪU</div>
     <nav class="game-menu" aria-label="Tiện ích trò chơi">
       <button aria-label="Mở túi đồ" @click="openPanel('inventory')">
@@ -996,11 +1156,13 @@ onBeforeUnmount(() => {
       aria-label="Tu vi chiến đấu"
       :aria-valuenow="exp"
       :aria-valuemin="0"
-      :aria-valuemax="Math.max(600, exp)"
+      :aria-valuemax="level * 120"
     >
-      <i :style="{ width: Math.min(100, (exp / 600) * 100) + '%' }"></i
+      <i
+        :style="{ width: Math.min(100, (exp / (level * 120)) * 100) + '%' }"
+      ></i
       ><span
-        >Tu vi {{ exp }} / 600
+        >Tu vi {{ exp }} / {{ level * 120 }}
         <b>◈ {{ coins.toLocaleString("vi-VN") }}</b></span
       >
     </div>
@@ -1015,7 +1177,29 @@ onBeforeUnmount(() => {
       <p>Hồi sinh tại Thanh Vân Đình sau {{ Math.ceil(deadFor) }} giây…</p>
     </div>
     <ModalDialog v-if="panel" :title="panelTitle" @close="panel = null"
-      ><template v-if="panel === 'inventory'"
+      ><template v-if="panel === 'currencies'"
+        ><div class="currency-list">
+          <div>
+            <span>Linh Thạch</span><b>{{ coins.toLocaleString("vi-VN") }}</b>
+          </div>
+          <div><span>Tiên Ngọc</span><b>60</b></div>
+          <div><span>Công Đức</span><b>100</b></div>
+        </div>
+        <p>Tiền tệ mẫu trong phiên hiện tại.</p></template
+      ><template v-else-if="panel === 'realms'"
+        ><div class="realm-list">
+          <span
+            v-for="(r, i) in realms"
+            :key="r"
+            :class="{ current: i === 0 }"
+            >{{ r }}</span
+          >
+        </div>
+        <p>
+          Luyện Khí · Tầng {{ Math.min(10, level) }}. Mỗi cảnh giới có 10 tiểu
+          cảnh. Đột phá cảnh giới thật chưa được tích hợp.
+        </p></template
+      ><template v-else-if="panel === 'inventory'"
         ><div class="inventory-summary">
           <span>◈ {{ coins.toLocaleString("vi-VN") }} linh thạch</span
           ><span>Tu vi: {{ exp }}</span>
