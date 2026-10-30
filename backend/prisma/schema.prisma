@@ -44,6 +44,7 @@ model Character {
   realmId    Int
   realm      Realm               @relation(fields: [realmId], references: [id])
   subRealm   Int                 @default(1)
+  exp        Int                 @default(0)
   mapId      Int?
   map        GameMap?            @relation(fields: [mapId], references: [id])
   posX       Float               @default(0)

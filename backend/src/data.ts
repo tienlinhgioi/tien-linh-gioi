@@ -25,3 +25,15 @@ export const SAVE_INTERVAL_MS = 30000 // ghi vị trí vào MySQL
 export const MONSTERS_PER_MAP = 5
 export const MONSTER_NAME = 'Yêu Thú' // tên tạm
 export const MONSTER_SPEED = 40 // đơn vị/giây
+
+// Chống gian lận di chuyển, chat, tu luyện, chiến đấu (giá trị tạm)
+export const PLAYER_SPEED = 300 // đơn vị/giây, tối đa server chấp nhận
+export const CHAT_MAX_LENGTH = 200
+export const CHAT_COOLDOWN_MS = { map: 1000, world: 5000 }
+export const expNeeded = (realmOrder: number, subRealm: number) => 100 * realmOrder * subRealm
+export const CAST_RANGE = 150
+export const CAST_COOLDOWN_MS = 1000
+export const BASE_DAMAGE = 10 // sát thương = BASE_DAMAGE * thứ tự cảnh giới
+export const MONSTER_HP = 50
+export const MONSTER_EXP = 20
+export const MONSTER_RESPAWN_MS = 5000

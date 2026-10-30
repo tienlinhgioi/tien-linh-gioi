@@ -4,8 +4,9 @@ import type { Server as HttpServer } from 'http'
 import { z } from 'zod'
 import { prisma } from '../lib/prisma'
 import { verifyToken } from '../lib/auth'
-import { SUB_REALMS_PER_REALM, SAVE_INTERVAL_MS } from '../data'
-import { Player, players, mapRoom, enterMap, leaveMap, movePlayer, savePlayer, startLoops, spawnMonsters } from './world'
+import { SUB_REALMS_PER_REALM, SAVE_INTERVAL_MS, CHAT_MAX_LENGTH, CHAT_COOLDOWN_MS, expNeeded, MONSTER_EXP } from '../data'
+import { addExp, breakthrough } from '../cultivation'
+import { Player, players, mapRoom, enterMap, leaveMap, movePlayer, castAt, savePlayer, startLoops, spawnMonsters } from './world'
 
 type Ack = (res: unknown) => void
 
@@ -21,6 +22,8 @@ async function loadMe(accountId: number) {
     name: c.name,
     realm: { order: c.realm.order, name: c.realm.name },
     subRealm: c.subRealm,
+    exp: c.exp,
+    expNeeded: expNeeded(c.realm.order, c.subRealm),
     currencies: all.map((cur) => ({
       code: cur.code,
       name: cur.name,
@@ -79,7 +82,7 @@ export async function initSocket(http: HttpServer, origin: string) {
       }
       const parsed = z.object({ mapId: z.number().int().optional() }).safeParse(data)
       if (!parsed.success) return ack?.({ error: 'Dữ liệu không hợp lệ' })
-      const char = await prisma.character.findUnique({ where: { accountId } })
+      const char = await prisma.character.findUnique({ where: { accountId }, include: { realm: true } })
       if (!char) return ack?.({ error: 'Chưa có nhân vật' })
       const mapId = parsed.data.mapId ?? char.mapId
       if (mapId === null) return ack?.({ error: 'Chưa chọn map' })
@@ -93,9 +96,13 @@ export async function initSocket(http: HttpServer, origin: string) {
         socketId: socket.id,
         characterId: char.id,
         name: char.name,
+        realmOrder: char.realm.order,
+        subRealm: char.subRealm,
         mapId: map.id,
         x: same ? char.posX : 0,
         y: same ? char.posY : 0,
+        lastMoveAt: Date.now(),
+        lastCastAt: 0,
         dirty: false,
         visiblePlayers: new Set(),
         visibleMonsters: new Set(),
@@ -119,7 +126,53 @@ export async function initSocket(http: HttpServer, origin: string) {
       const p = players.get(socket.id)
       const parsed = z.object({ x: z.number().finite(), y: z.number().finite() }).safeParse(data)
       if (!p || !parsed.success) return
-      movePlayer(io, p, parsed.data.x, parsed.data.y)
+      if (!movePlayer(io, p, parsed.data.x, parsed.data.y)) socket.emit('move:rejected', { x: p.x, y: p.y })
+    })
+
+    // chat theo map hoặc thế giới, có giới hạn tần suất
+    socket.on('chat:send', async (data: unknown, ack?: Ack) => {
+      const parsed = z
+        .object({ channel: z.enum(['map', 'world']), text: z.string().trim().min(1).max(CHAT_MAX_LENGTH) })
+        .safeParse(data)
+      if (!parsed.success) return ack?.({ error: 'Tin nhắn không hợp lệ' })
+      const { channel, text } = parsed.data
+      const last: Record<string, number> = (socket.data.lastChat ??= {})
+      const now = Date.now()
+      if (now - (last[channel] ?? 0) < CHAT_COOLDOWN_MS[channel]) return ack?.({ error: 'Gửi quá nhanh' })
+      const p = players.get(socket.id)
+      if (channel === 'map' && !p) return ack?.({ error: 'Chưa vào map' })
+      const from = p?.name ?? (await prisma.character.findUnique({ where: { accountId } }))?.name
+      if (!from) return ack?.({ error: 'Chưa có nhân vật' })
+      last[channel] = now
+      const msg = { channel, from, text, at: now }
+      if (channel === 'map') io.to(mapRoom(p!.mapId)).emit('chat:message', msg)
+      else io.emit('chat:message', msg)
+      ack?.({ ok: true })
+    })
+
+    // tấn công cơ bản: { targetId } là id quái
+    socket.on('cast', async (data: unknown, ack?: Ack) => {
+      const p = players.get(socket.id)
+      const parsed = z.object({ targetId: z.number().int() }).safeParse(data)
+      if (!p || !parsed.success) return ack?.({ error: 'Dữ liệu không hợp lệ' })
+      const res = castAt(io, p, parsed.data.targetId)
+      if ('killed' in res && res.killed) {
+        const exp = await addExp(p.characterId, MONSTER_EXP)
+        socket.emit('player:exp', { exp, expNeeded: expNeeded(p.realmOrder, p.subRealm) })
+      }
+      ack?.(res)
+    })
+
+    // đột phá tiểu cảnh / cảnh giới
+    socket.on('cultivate:breakthrough', async (ack?: Ack) => {
+      const res = await breakthrough(accountId)
+      if ('error' in res) return ack?.(res)
+      const p = players.get(socket.id)
+      if (p) {
+        p.realmOrder = res.realmOrder
+        p.subRealm = res.subRealm
+      }
+      ack?.({ character: await loadMe(accountId) })
     })
 
     socket.on('disconnect', leave)
