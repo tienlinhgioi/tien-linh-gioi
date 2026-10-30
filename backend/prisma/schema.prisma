@@ -13,13 +13,15 @@ model Account {
   username     String   @unique
   passwordHash String
   createdAt    DateTime @default(now())
+  character    Character?
 }
 
 // Cảnh giới (mỗi cảnh có 10 tiểu cảnh, tiểu cảnh là số 1..10)
 model Realm {
-  id    Int    @id @default(autoincrement())
-  order Int    @unique
-  name  String @unique
+  id         Int         @id @default(autoincrement())
+  order      Int         @unique
+  name       String      @unique
+  characters Character[]
 }
 
 enum MapKind {
@@ -31,4 +33,33 @@ model GameMap {
   id   Int     @id @default(autoincrement())
   name String  @unique
   kind MapKind
+}
+
+model Character {
+  id         Int                 @id @default(autoincrement())
+  accountId  Int                 @unique
+  account    Account             @relation(fields: [accountId], references: [id])
+  name       String              @unique
+  realmId    Int
+  realm      Realm               @relation(fields: [realmId], references: [id])
+  subRealm   Int                 @default(1)
+  createdAt  DateTime            @default(now())
+  currencies CharacterCurrency[]
+}
+
+model Currency {
+  id         Int                 @id @default(autoincrement())
+  code       String              @unique
+  name       String
+  holders    CharacterCurrency[]
+}
+
+model CharacterCurrency {
+  characterId Int
+  currencyId  Int
+  amount      Int       @default(0)
+  character   Character @relation(fields: [characterId], references: [id])
+  currency    Currency  @relation(fields: [currencyId], references: [id])
+
+  @@id([characterId, currencyId])
 }
