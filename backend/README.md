@@ -1,5 +1,7 @@
 # Backend Tiên Linh Giới
 
+![Backend](../../actions/workflows/backend.yml/badge.svg)
+
 ## Chạy
 ```bash
 cp .env.example .env   # sửa DATABASE_URL, JWT_SECRET
@@ -71,3 +73,6 @@ Trang bị có 5 ô (WEAPON, ARMOR, HELMET, BOOTS, RING), phẩm chất COMMON/R
 Bang: bang chủ rời thì nhường cho thành viên có id nhỏ nhất, hết người thì giải tán. Lời mời chỉ gửi được cho người đang online.
 Loại quái, vật phẩm, kỹ năng, giá cửa hàng, tỉ lệ rơi là dữ liệu mẫu trong `src/data.ts`; sửa rồi chạy lại `npm run seed` và khởi động lại server.
 Chưa có: cường hóa trang bị, đấu giá, nhóm đội, nhiệm vụ.
+
+## CI (GitHub Actions)
+`.github/workflows/backend.yml` chạy mỗi lần push main hoặc PR có đổi `backend/`: dựng MySQL 8, `prisma migrate deploy`, `npm run seed`, build rồi chạy server và toàn bộ test trong `test/`. GitHub Actions chỉ chạy test; database và server game thật cần host riêng (xem phần Chạy).

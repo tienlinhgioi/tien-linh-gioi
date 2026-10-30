@@ -1,0 +1,80 @@
+name: Backend
+
+on:
+  push:
+    branches: [main]
+    paths: ['backend/**', '.github/workflows/backend.yml']
+  pull_request:
+    paths: ['backend/**', '.github/workflows/backend.yml']
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: password
+          MYSQL_DATABASE: tien_linh_gioi
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -ppassword"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
+    env:
+      DATABASE_URL: mysql://root:password@127.0.0.1:3306/tien_linh_gioi
+      JWT_SECRET: ci-secret
+      PORT: 3000
+
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - run: npm ci
+      - run: npx prisma generate
+      - run: npx tsc --noEmit
+
+      # dựng toàn bộ bảng từ các migration, nạp dữ liệu mẫu
+      - run: npx prisma migrate deploy
+      - run: npm run seed
+
+      - name: Chạy server
+        run: |
+          npm run build
+          nohup npm start > server.log 2>&1 &
+          for i in $(seq 1 30); do
+            curl -s -o /dev/null -X POST localhost:3000/api/login -H 'content-type: application/json' -d '{}' && exit 0
+            sleep 1
+          done
+          cat server.log
+          exit 1
+
+      - name: Test
+        shell: bash
+        run: |
+          fail=0
+          for t in smoke world rules combat guild extra social trade gear; do
+            echo "=== test/$t.js"
+            node test/$t.js | tee "out-$t.txt"
+            code=${PIPESTATUS[0]}
+            if [ "$code" -ne 0 ] || grep -qE '^FAIL' "out-$t.txt"; then fail=1; fi
+          done
+          exit $fail
+
+      - name: Log server khi lỗi
+        if: failure()
+        run: cat server.log
