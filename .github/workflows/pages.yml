@@ -1,3 +1,4 @@
+# Cần bật một lần: Settings > Pages > Source: GitHub Actions
 name: Frontend Pages
 
 on:
@@ -30,9 +31,6 @@ jobs:
       - run: npm test
       # GitHub Pages phục vụ ở /<tên repo>/ nên build với base tương ứng
       - run: npm run build -- --base=/${{ github.event.repository.name }}/
-      - uses: actions/configure-pages@v5
-        with:
-          enablement: true
       - uses: actions/upload-pages-artifact@v3
         with:
           path: frontend/dist
