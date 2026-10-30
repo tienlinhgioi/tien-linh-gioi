@@ -2,7 +2,7 @@
 import type { Server } from 'socket.io'
 import { prisma } from '../lib/prisma'
 import {
-  VIEW_RADIUS, MAP_SIZE, TICK_MS, MONSTER_SPAWNS, PLAYER_SPEED, CAST_RANGE, CAST_COOLDOWN_MS, BASE_DAMAGE,
+  VIEW_RADIUS, MAP_SIZE, TICK_MS, MONSTER_SPAWNS, PLAYER_SPEED, SKILLS, BASE_DAMAGE,
   MONSTER_RESPAWN_MS, PLAYER_BASE_HP, AGGRO_RANGE, MONSTER_ATTACK_RANGE, MONSTER_ATTACK_COOLDOWN_MS,
   MONSTER_CHASE_FACTOR, RESPAWN_DELAY_MS, RESPAWN_POINT,
 } from '../data'
@@ -15,12 +15,14 @@ export interface Player {
   subRealm: number
   hp: number
   maxHp: number
+  bonusAtk: number
+  bonusHp: number
   dead: boolean
   mapId: number
   x: number
   y: number
   lastMoveAt: number
-  lastCastAt: number
+  skillReadyAt: Record<string, number>
   dirty: boolean
   visiblePlayers: Set<string> // socketId
   visibleMonsters: Set<number>
@@ -49,7 +51,7 @@ export const players = new Map<string, Player>() // key: socket.id
 const monsters: Monster[] = []
 
 export const mapRoom = (mapId: number) => `map:${mapId}`
-export const maxHpOf = (realmOrder: number) => PLAYER_BASE_HP * realmOrder
+export const maxHpOf = (realmOrder: number, bonusHp = 0) => PLAYER_BASE_HP * realmOrder + bonusHp
 
 const near = (a: { x: number; y: number }, b: { x: number; y: number }) =>
   (a.x - b.x) ** 2 + (a.y - b.y) ** 2 <= VIEW_RADIUS ** 2
@@ -143,8 +145,17 @@ export function healPlayer(io: Server, p: Player, amount: number) {
 export function refreshRealm(io: Server, p: Player, realmOrder: number, subRealm: number) {
   p.realmOrder = realmOrder
   p.subRealm = subRealm
-  p.maxHp = maxHpOf(realmOrder)
+  p.maxHp = maxHpOf(realmOrder, p.bonusHp)
   if (!p.dead) p.hp = p.maxHp
+  sendHp(io, p)
+}
+
+// Mặc/tháo trang bị: đổi chỉ số, giữ nguyên máu hiện tại (không vượt tối đa)
+export function setBonuses(io: Server, p: Player, atk: number, hp: number) {
+  p.bonusAtk = atk
+  p.bonusHp = hp
+  p.maxHp = maxHpOf(p.realmOrder, hp)
+  p.hp = Math.min(p.hp, p.maxHp)
   sendHp(io, p)
 }
 
@@ -168,22 +179,25 @@ function respawn(io: Server, p: Player) {
   syncVisibility(io, p, true)
 }
 
-// Tấn công cơ bản vào quái; trả về kết quả hoặc lỗi
-export function castAt(io: Server, p: Player, targetId: number) {
+// Dùng kỹ năng lên quái; trả về kết quả hoặc lỗi
+export function castAt(io: Server, p: Player, targetId: number, skillCode: string) {
   if (p.dead) return { error: 'Đã chết' }
+  const skill = SKILLS.find((x) => x.code === skillCode)
+  if (!skill) return { error: 'Kỹ năng không tồn tại' }
+  if (p.realmOrder < skill.minRealm) return { error: 'Chưa mở khóa kỹ năng' }
   const now = Date.now()
-  if (now - p.lastCastAt < CAST_COOLDOWN_MS) return { error: 'Kỹ năng đang hồi' }
+  if (now < (p.skillReadyAt[skill.code] ?? 0)) return { error: 'Kỹ năng đang hồi' }
   const m = monsters.find((x) => x.id === targetId)
   if (!m || m.respawnAt || m.mapId !== p.mapId) return { error: 'Mục tiêu không hợp lệ' }
-  if (Math.hypot(m.x - p.x, m.y - p.y) > CAST_RANGE) return { error: 'Quá xa' }
-  p.lastCastAt = now
-  const damage = BASE_DAMAGE * p.realmOrder
+  if (Math.hypot(m.x - p.x, m.y - p.y) > skill.range) return { error: 'Quá xa' }
+  p.skillReadyAt[skill.code] = now + skill.cooldownMs
+  const damage = Math.round(skill.damageMult * (BASE_DAMAGE * p.realmOrder + p.bonusAtk))
   m.hp = Math.max(0, m.hp - damage)
   const killed = m.hp === 0
   if (killed) m.respawnAt = now + MONSTER_RESPAWN_MS
   for (const o of players.values()) {
     if (o.visibleMonsters.has(m.id)) {
-      io.to(o.socketId).emit('monster:hit', { id: m.id, hp: m.hp, damage, by: p.characterId })
+      io.to(o.socketId).emit('monster:hit', { id: m.id, hp: m.hp, damage, by: p.characterId, skill: skill.code })
     }
   }
   return { damage, hp: m.hp, killed, typeId: m.typeId }

@@ -14,7 +14,7 @@ export function registerInventory(io: Server, socket: Socket) {
       include: { item: true },
       orderBy: { itemId: 'asc' },
     })
-    ack?.({ items: rows.map((r) => ({ code: r.item.code, name: r.item.name, count: r.count, healHp: r.item.healHp, expGain: r.item.expGain })) })
+    ack?.({ items: rows.map((r) => ({ code: r.item.code, name: r.item.name, count: r.count, healHp: r.item.healHp, expGain: r.item.expGain, slot: r.item.slot, atkBonus: r.item.atkBonus, hpBonus: r.item.hpBonus })) })
   })
 
   // dùng 1 vật phẩm: hồi máu (cần đang trong map) và/hoặc cộng tu vi
@@ -24,6 +24,7 @@ export function registerInventory(io: Server, socket: Socket) {
     if (!parsed.success || !c) return ack?.({ error: 'Dữ liệu không hợp lệ' })
     const item = await prisma.item.findUnique({ where: { code: parsed.data.code } })
     if (!item) return ack?.({ error: 'Vật phẩm không tồn tại' })
+    if (item.slot) return ack?.({ error: 'Hãy dùng chức năng mặc trang bị' })
     const p = players.get(socket.id)
     if (item.healHp > 0 && (!p || p.dead)) return ack?.({ error: 'Cần ở trong map và còn sống' })
     const used = await prisma.inventoryItem.updateMany({

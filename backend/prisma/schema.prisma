@@ -48,6 +48,8 @@ model Character {
   guildId    Int?
   guild      Guild?              @relation(fields: [guildId], references: [id])
   inventory  InventoryItem[]
+  equipment  Equipment[]
+  guildRole  String              @default("MEMBER")
   mapId      Int?
   map        GameMap?            @relation(fields: [mapId], references: [id])
   posX       Float               @default(0)
@@ -94,8 +96,12 @@ model Item {
   name      String
   healHp    Int             @default(0)
   expGain   Int             @default(0)
+  slot      String?
+  atkBonus  Int             @default(0)
+  hpBonus   Int             @default(0)
   drops     MonsterDrop[]
   holders   InventoryItem[]
+  equipped  Equipment[]
 }
 
 // chance: 0..1
@@ -125,4 +131,15 @@ model Guild {
   leaderId  Int
   createdAt DateTime    @default(now())
   members   Character[]
+}
+
+// Trang bị đang mặc, mỗi ô (slot) một món
+model Equipment {
+  characterId Int
+  slot        String
+  itemId      Int
+  character   Character @relation(fields: [characterId], references: [id])
+  item        Item      @relation(fields: [itemId], references: [id])
+
+  @@id([characterId, slot])
 }

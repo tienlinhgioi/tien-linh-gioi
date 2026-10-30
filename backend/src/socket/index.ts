@@ -4,7 +4,7 @@ import type { Server as HttpServer } from 'http'
 import { z } from 'zod'
 import { prisma } from '../lib/prisma'
 import { verifyToken } from '../lib/auth'
-import { SUB_REALMS_PER_REALM, SAVE_INTERVAL_MS, CHAT_MAX_LENGTH, CHAT_COOLDOWN_MS, expNeeded } from '../data'
+import { SUB_REALMS_PER_REALM, SAVE_INTERVAL_MS, CHAT_MAX_LENGTH, CHAT_COOLDOWN_MS, expNeeded, SKILLS, BASIC_SKILL, SHOP_NPC } from '../data'
 import { breakthrough } from '../cultivation'
 import { giveLoot } from '../loot'
 import {
@@ -14,6 +14,8 @@ import {
 import { Ack, loadMe, charOf, guildRoom } from './common'
 import { registerInventory } from './inventory'
 import { registerGuild } from './guild'
+import { registerEquipment, loadBonuses } from './equipment'
+import { registerShop } from './shop'
 
 export async function initSocket(http: HttpServer, origin: string) {
   const io = new Server(http, { parser, cors: { origin } })
@@ -78,27 +80,30 @@ export async function initSocket(http: HttpServer, origin: string) {
       if (old) leaveMap(io, old)
       socket.join(mapRoom(map.id))
       const same = char.mapId === map.id
+      const bonus = await loadBonuses(char.id)
       const me: Player = {
         socketId: socket.id,
         characterId: char.id,
         name: char.name,
         realmOrder: char.realm.order,
         subRealm: char.subRealm,
-        hp: maxHpOf(char.realm.order),
-        maxHp: maxHpOf(char.realm.order),
+        hp: maxHpOf(char.realm.order, bonus.hp),
+        maxHp: maxHpOf(char.realm.order, bonus.hp),
+        bonusAtk: bonus.atk,
+        bonusHp: bonus.hp,
         dead: false,
         mapId: map.id,
         x: same ? char.posX : 0,
         y: same ? char.posY : 0,
         lastMoveAt: Date.now(),
-        lastCastAt: 0,
+        skillReadyAt: {},
         dirty: false,
         visiblePlayers: new Set(),
         visibleMonsters: new Set(),
       }
       const view = enterMap(io, me)
       void savePlayer(me)
-      ack?.({ x: me.x, y: me.y, hp: me.hp, maxHp: me.maxHp, ...view })
+      ack?.({ x: me.x, y: me.y, hp: me.hp, maxHp: me.maxHp, npcs: [SHOP_NPC], ...view })
     })
 
     const leave = () => {
@@ -146,12 +151,19 @@ export async function initSocket(http: HttpServer, origin: string) {
       ack?.({ ok: true })
     })
 
-    // tấn công cơ bản: { targetId } là id quái
+    // danh sách kỹ năng và kỹ năng đã mở khóa theo cảnh giới hiện tại
+    socket.on('skill:list', async (ack?: Ack) => {
+      const c = await prisma.character.findUnique({ where: { accountId }, include: { realm: true } })
+      if (!c) return ack?.({ error: 'Chưa có nhân vật' })
+      ack?.({ skills: SKILLS.map((k) => ({ ...k, unlocked: c.realm.order >= k.minRealm })) })
+    })
+
+    // tấn công quái: { targetId, skill? } (mặc định đòn cơ bản)
     socket.on('cast', async (data: unknown, ack?: Ack) => {
       const p = players.get(socket.id)
-      const parsed = z.object({ targetId: z.number().int() }).safeParse(data)
+      const parsed = z.object({ targetId: z.number().int(), skill: z.string().optional() }).safeParse(data)
       if (!p || !parsed.success) return ack?.({ error: 'Dữ liệu không hợp lệ' })
-      const res = castAt(io, p, parsed.data.targetId)
+      const res = castAt(io, p, parsed.data.targetId, parsed.data.skill ?? BASIC_SKILL)
       if ('killed' in res && res.killed) {
         const loot = await giveLoot(p.characterId, res.typeId)
         const { exp } = await prisma.character.findUniqueOrThrow({ where: { id: p.characterId } })
@@ -172,6 +184,8 @@ export async function initSocket(http: HttpServer, origin: string) {
 
     registerInventory(io, socket)
     registerGuild(io, socket)
+    registerEquipment(io, socket)
+    registerShop(io, socket)
 
     socket.on('disconnect', leave)
   })
