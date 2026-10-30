@@ -1,0 +1,171 @@
+// FILE SINH TỰ ĐỘNG từ ../schema.prisma bằng `npm run schema:postgres`. Không sửa tay.
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Account {
+  id           Int      @id @default(autoincrement())
+  email        String   @unique
+  username     String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+  character    Character?
+}
+
+// Cảnh giới (mỗi cảnh có 10 tiểu cảnh, tiểu cảnh là số 1..10)
+model Realm {
+  id         Int         @id @default(autoincrement())
+  order      Int         @unique
+  name       String      @unique
+  characters Character[]
+}
+
+enum MapKind {
+  SMALL
+  LARGE
+}
+
+model GameMap {
+  id   Int     @id @default(autoincrement())
+  name       String      @unique
+  kind       MapKind
+  characters Character[]
+}
+
+model Character {
+  id         Int                 @id @default(autoincrement())
+  accountId  Int                 @unique
+  account    Account             @relation(fields: [accountId], references: [id])
+  name       String              @unique
+  realmId    Int
+  realm      Realm               @relation(fields: [realmId], references: [id])
+  subRealm   Int                 @default(1)
+  exp        Int                 @default(0)
+  skillPoints Int                @default(0)
+  guildId    Int?
+  guild      Guild?              @relation(fields: [guildId], references: [id])
+  inventory  InventoryItem[]
+  equipment  Equipment[]
+  guildRole  String              @default("MEMBER")
+  mapId      Int?
+  map        GameMap?            @relation(fields: [mapId], references: [id])
+  posX       Float               @default(0)
+  posY       Float               @default(0)
+  createdAt  DateTime            @default(now())
+  currencies CharacterCurrency[]
+}
+
+model Currency {
+  id         Int                 @id @default(autoincrement())
+  code       String              @unique
+  name       String
+  holders    CharacterCurrency[]
+}
+
+model CharacterCurrency {
+  characterId Int
+  currencyId  Int
+  amount      Int       @default(0)
+  character   Character @relation(fields: [characterId], references: [id])
+  currency    Currency  @relation(fields: [currencyId], references: [id])
+
+  @@id([characterId, currencyId])
+}
+
+// Quái theo loại: dropCurrency rơi ngẫu nhiên trong [dropMin, dropMax]
+model MonsterType {
+  id             Int           @id @default(autoincrement())
+  code           String        @unique
+  name           String
+  hp             Int
+  atk            Int
+  speed          Int
+  exp            Int
+  dropCurrencyId Int?
+  dropMin        Int           @default(0)
+  dropMax        Int           @default(0)
+  drops          MonsterDrop[]
+}
+
+model Item {
+  id        Int             @id @default(autoincrement())
+  code      String          @unique
+  name      String
+  healHp    Int             @default(0)
+  expGain   Int             @default(0)
+  slot      String?
+  quality   String          @default("COMMON")
+  atkBonus  Int             @default(0)
+  hpBonus   Int             @default(0)
+  drops     MonsterDrop[]
+  holders   InventoryItem[]
+  equipped  Equipment[]
+}
+
+// chance: 0..1
+model MonsterDrop {
+  monsterTypeId Int
+  itemId        Int
+  chance        Float
+  monsterType   MonsterType @relation(fields: [monsterTypeId], references: [id])
+  item          Item        @relation(fields: [itemId], references: [id])
+
+  @@id([monsterTypeId, itemId])
+}
+
+model InventoryItem {
+  characterId Int
+  itemId      Int
+  count       Int       @default(0)
+  character   Character @relation(fields: [characterId], references: [id])
+  item        Item      @relation(fields: [itemId], references: [id])
+
+  @@id([characterId, itemId])
+}
+
+model Guild {
+  id        Int         @id @default(autoincrement())
+  name      String      @unique
+  leaderId  Int
+  createdAt DateTime    @default(now())
+  members   Character[]
+}
+
+// Trang bị đang mặc, mỗi ô (slot) một món
+model Equipment {
+  characterId Int
+  slot        String
+  itemId      Int
+  character   Character @relation(fields: [characterId], references: [id])
+  item        Item      @relation(fields: [itemId], references: [id])
+
+  @@id([characterId, slot])
+}
+
+// Bạn bè (hai chiều, lưu 2 dòng) và chặn (một chiều). Không dùng khóa ngoại, code giữ tính toàn vẹn
+model Friend {
+  characterId Int
+  friendId    Int
+
+  @@id([characterId, friendId])
+}
+
+model Block {
+  characterId Int
+  blockedId   Int
+
+  @@id([characterId, blockedId])
+}
+
+// Kỹ năng đã học (đòn cơ bản luôn có sẵn, không lưu)
+model CharacterSkill {
+  characterId Int
+  skillCode   String
+
+  @@id([characterId, skillCode])
+}

@@ -6,9 +6,11 @@
     "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
     "build": "tsc",
     "start": "node dist/src/index.js",
-    "prisma:generate": "prisma generate",
-    "prisma:migrate": "prisma migrate dev",
-    "seed": "ts-node --transpile-only prisma/seed.ts"
+    "prisma:generate": "node scripts/prisma.js generate",
+    "prisma:migrate": "node scripts/prisma.js migrate dev",
+    "seed": "ts-node --transpile-only prisma/seed.ts",
+    "prisma": "node scripts/prisma.js",
+    "schema:postgres": "node scripts/gen-postgres-schema.js"
   },
   "prisma": {
     "seed": "ts-node --transpile-only prisma/seed.ts"

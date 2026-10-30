@@ -9,8 +9,17 @@ on:
 
 jobs:
   test:
+    name: test (${{ matrix.db }})
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - db: mysql
+            url: mysql://root:password@127.0.0.1:3306/tien_linh_gioi
+          - db: postgres
+            url: postgresql://postgres:password@127.0.0.1:5432/tien_linh_gioi
 
     services:
       mysql:
@@ -25,9 +34,21 @@ jobs:
           --health-interval=10s
           --health-timeout=5s
           --health-retries=10
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: tien_linh_gioi
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
 
     env:
-      DATABASE_URL: mysql://root:password@127.0.0.1:3306/tien_linh_gioi
+      DATABASE_URL: ${{ matrix.url }}
       JWT_SECRET: ci-secret
       PORT: 3000
 
@@ -45,11 +66,19 @@ jobs:
           cache-dependency-path: backend/package-lock.json
 
       - run: npm ci
-      - run: npx prisma generate
+
+      # schema Postgres sinh từ schema MySQL, không được lệch nhau
+      - name: Kiểm tra schema Postgres không lệch
+        run: |
+          npm run schema:postgres
+          git diff --exit-code prisma/postgres/schema.prisma
+
+      # schema và migration được chọn theo DATABASE_URL (mysql hoặc postgres)
+      - run: npm run prisma -- generate
       - run: npx tsc --noEmit
 
       # dựng toàn bộ bảng từ các migration, nạp dữ liệu mẫu
-      - run: npx prisma migrate deploy
+      - run: npm run prisma -- migrate deploy
       - run: npm run seed
 
       - name: Chạy server

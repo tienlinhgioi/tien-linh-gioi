@@ -6,11 +6,20 @@
 ```bash
 cp .env.example .env   # sửa DATABASE_URL, JWT_SECRET
 npm install
-npx prisma migrate dev
+npm run prisma -- generate
+npm run prisma -- migrate dev
 npm run seed           # nạp cảnh giới, map, tiền tệ, vật phẩm, loại quái
 npm run dev            # cổng 3000
 ```
 Kiểm thử (cần server đang chạy): `node test/smoke.js`, `node test/world.js`, `node test/rules.js`, `node test/combat.js`, `node test/guild.js`, `node test/extra.js`, `node test/social.js`, `node test/trade.js`, `node test/gear.js`
+
+## Database: MySQL hoặc Supabase (Postgres)
+Backend dùng được cả hai; loại database suy ra từ `DATABASE_URL` (`mysql://` hoặc `postgresql://`). Mọi lệnh Prisma chạy qua `npm run prisma -- <lệnh>` để tự chọn đúng schema:
+- MySQL: `prisma/schema.prisma` (nguồn gốc duy nhất, sửa ở đây) và `prisma/migrations`.
+- Postgres: `prisma/postgres/schema.prisma` **sinh tự động** từ schema MySQL bằng `npm run schema:postgres` (không sửa tay), migration riêng ở `prisma/postgres/migrations`. Sau khi đổi schema MySQL phải sinh lại schema Postgres và tạo migration cho cả hai: `DATABASE_URL=<mysql> npm run prisma -- migrate dev` và `DATABASE_URL=<postgres> npm run prisma -- migrate dev`.
+- Sau khi đổi loại database phải chạy lại `npm run prisma -- generate`.
+
+Project Supabase `TuTien` (ref `peroefkgioixmjactryl`) đã dựng đủ bảng, bật RLS (không policy: chỉ server Node với vai trò `postgres` truy cập được, khóa anon của Supabase không đọc được gì) và nạp dữ liệu mẫu. Chỉ cần đặt `DATABASE_URL` trỏ tới nó (xem `.env.example`); `npm run prisma -- migrate deploy` sẽ không làm gì vì hai migration đã được ghi nhận. Khác biệt: Postgres phân biệt hoa thường, nên tên đăng nhập, tên nhân vật và tên bang `Alice` với `alice` là hai tên khác nhau.
 
 ## API (HTTP)
 - `POST /api/register` `{ email, username, password }` -> `{ token, username }`
@@ -75,4 +84,4 @@ Loại quái, vật phẩm, kỹ năng, giá cửa hàng, tỉ lệ rơi là d�
 Chưa có: cường hóa trang bị, đấu giá, nhóm đội, nhiệm vụ.
 
 ## CI (GitHub Actions)
-`.github/workflows/backend.yml` chạy mỗi lần push main hoặc PR có đổi `backend/`: dựng MySQL 8, `prisma migrate deploy`, `npm run seed`, build rồi chạy server và toàn bộ test trong `test/`. GitHub Actions chỉ chạy test; database và server game thật cần host riêng (xem phần Chạy).
+`.github/workflows/backend.yml` chạy mỗi lần push main hoặc PR có đổi `backend/`, song song trên MySQL 8 và Postgres 16: kiểm tra schema Postgres không lệch, `prisma migrate deploy`, `npm run seed`, build rồi chạy server và toàn bộ test trong `test/`. GitHub Actions chỉ chạy test; database và server game thật cần host riêng (xem phần Chạy).
