@@ -31,8 +31,9 @@ enum MapKind {
 
 model GameMap {
   id   Int     @id @default(autoincrement())
-  name String  @unique
-  kind MapKind
+  name       String      @unique
+  kind       MapKind
+  characters Character[]
 }
 
 model Character {
@@ -43,6 +44,10 @@ model Character {
   realmId    Int
   realm      Realm               @relation(fields: [realmId], references: [id])
   subRealm   Int                 @default(1)
+  mapId      Int?
+  map        GameMap?            @relation(fields: [mapId], references: [id])
+  posX       Float               @default(0)
+  posY       Float               @default(0)
   createdAt  DateTime            @default(now())
   currencies CharacterCurrency[]
 }

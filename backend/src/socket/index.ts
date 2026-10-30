@@ -4,35 +4,33 @@ import type { Server as HttpServer } from 'http'
 import { z } from 'zod'
 import { prisma } from '../lib/prisma'
 import { verifyToken } from '../lib/auth'
-import { SUB_REALMS_PER_REALM } from '../data'
-import { players, mapRoom, playersInMap } from './world'
+import { SUB_REALMS_PER_REALM, SAVE_INTERVAL_MS } from '../data'
+import { Player, players, mapRoom, enterMap, leaveMap, movePlayer, savePlayer, startLoops, spawnMonsters } from './world'
 
 type Ack = (res: unknown) => void
 
 async function loadMe(accountId: number) {
   const c = await prisma.character.findUnique({
     where: { accountId },
-    include: { realm: true, currencies: { include: { currency: true } } },
+    include: { realm: true, currencies: true },
   })
   if (!c) return null
+  const all = await prisma.currency.findMany({ orderBy: { id: 'asc' } })
   return {
     id: c.id,
     name: c.name,
     realm: { order: c.realm.order, name: c.realm.name },
     subRealm: c.subRealm,
-    currencies: c.currencies.map((x) => ({ code: x.currency.code, name: x.currency.name, amount: x.amount })),
+    currencies: all.map((cur) => ({
+      code: cur.code,
+      name: cur.name,
+      amount: c.currencies.find((x) => x.currencyId === cur.id)?.amount ?? 0,
+    })),
+    map: c.mapId === null ? null : { id: c.mapId, x: c.posX, y: c.posY },
   }
 }
 
-function leaveMap(io: Server, socket: Socket) {
-  const p = players.get(socket.id)
-  if (!p) return
-  players.delete(socket.id)
-  socket.leave(mapRoom(p.mapId))
-  io.to(mapRoom(p.mapId)).emit('player:left', { characterId: p.characterId })
-}
-
-export function initSocket(http: HttpServer, origin: string) {
+export async function initSocket(http: HttpServer, origin: string) {
   const io = new Server(http, { parser, cors: { origin } })
 
   io.use((socket, next) => {
@@ -73,37 +71,62 @@ export function initSocket(http: HttpServer, origin: string) {
       ack?.({ character: await loadMe(accountId) })
     })
 
+    // client có thể gửi { mapId } hoặc chỉ ack để vào lại map đã lưu
     socket.on('map:join', async (data: unknown, ack?: Ack) => {
-      const parsed = z.object({ mapId: z.number().int() }).safeParse(data)
+      if (typeof data === 'function') {
+        ack = data as Ack
+        data = {}
+      }
+      const parsed = z.object({ mapId: z.number().int().optional() }).safeParse(data)
       if (!parsed.success) return ack?.({ error: 'Dữ liệu không hợp lệ' })
-      const [char, map] = await Promise.all([
-        prisma.character.findUnique({ where: { accountId } }),
-        prisma.gameMap.findUnique({ where: { id: parsed.data.mapId } }),
-      ])
+      const char = await prisma.character.findUnique({ where: { accountId } })
       if (!char) return ack?.({ error: 'Chưa có nhân vật' })
+      const mapId = parsed.data.mapId ?? char.mapId
+      if (mapId === null) return ack?.({ error: 'Chưa chọn map' })
+      const map = await prisma.gameMap.findUnique({ where: { id: mapId } })
       if (!map) return ack?.({ error: 'Map không tồn tại' })
-      leaveMap(io, socket)
-      const me = { characterId: char.id, name: char.name, mapId: map.id, x: 0, y: 0 }
-      players.set(socket.id, me)
+      const old = players.get(socket.id)
+      if (old) leaveMap(io, old)
       socket.join(mapRoom(map.id))
-      socket.to(mapRoom(map.id)).emit('player:joined', me)
-      ack?.({ players: playersInMap(map.id) })
+      const same = char.mapId === map.id
+      const me: Player = {
+        socketId: socket.id,
+        characterId: char.id,
+        name: char.name,
+        mapId: map.id,
+        x: same ? char.posX : 0,
+        y: same ? char.posY : 0,
+        dirty: false,
+        visiblePlayers: new Set(),
+        visibleMonsters: new Set(),
+      }
+      const view = enterMap(io, me)
+      void savePlayer(me)
+      ack?.({ x: me.x, y: me.y, ...view })
     })
 
-    socket.on('map:leave', () => leaveMap(io, socket))
+    const leave = () => {
+      const p = players.get(socket.id)
+      if (p) {
+        socket.leave(mapRoom(p.mapId))
+        leaveMap(io, p)
+      }
+    }
+    socket.on('map:leave', leave)
 
     // client chỉ gửi vị trí muốn tới, server giữ trạng thái
     socket.on('move', (data: unknown) => {
       const p = players.get(socket.id)
       const parsed = z.object({ x: z.number().finite(), y: z.number().finite() }).safeParse(data)
       if (!p || !parsed.success) return
-      p.x = parsed.data.x
-      p.y = parsed.data.y
-      socket.to(mapRoom(p.mapId)).emit('player:moved', { characterId: p.characterId, x: p.x, y: p.y })
+      movePlayer(io, p, parsed.data.x, parsed.data.y)
     })
 
-    socket.on('disconnect', () => leaveMap(io, socket))
+    socket.on('disconnect', leave)
   })
+
+  await spawnMonsters()
+  startLoops(io, SAVE_INTERVAL_MS)
 
   return io
 }

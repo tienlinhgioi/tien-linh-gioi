@@ -4,6 +4,7 @@ import cors from 'cors'
 import http from 'http'
 import { authRouter } from './routes/auth'
 import { initSocket } from './socket'
+import { saveAll } from './socket/world'
 
 const origin = process.env.CLIENT_ORIGIN || 'http://localhost:5173'
 const app = express()
@@ -12,7 +13,13 @@ app.use(express.json())
 app.use('/api', authRouter)
 
 const server = http.createServer(app)
-initSocket(server, origin)
-
 const port = Number(process.env.PORT) || 3000
-server.listen(port, () => console.log(`Backend chạy ở cổng ${port}`))
+
+initSocket(server, origin).then(() => {
+  server.listen(port, () => console.log(`Backend chạy ở cổng ${port}`))
+})
+
+// Thoát êm: ghi vị trí mọi người chơi trước khi tắt
+const shutdown = () => saveAll().finally(() => process.exit(0))
+process.on('SIGINT', shutdown)
+process.on('SIGTERM', shutdown)
