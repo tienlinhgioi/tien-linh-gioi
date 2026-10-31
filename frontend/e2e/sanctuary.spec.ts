@@ -15,7 +15,7 @@ async function enter(page: import("@playwright/test").Page) {
   await expect(page.locator(".game-canvas canvas")).toBeVisible();
 }
 
-test("title, account registration, character creation and returning player login", async ({
+test("title, mock character creation and account validation", async ({
   page,
 }) => {
   const missing: string[] = [];
@@ -32,15 +32,18 @@ test("title, account registration, character creation and returning player login
   await page.getByRole("button", { name: "Kim", exact: true }).click();
   await expect(page.getByRole("status")).toContainText("Sắc bén");
   await page.getByRole("button", { name: /Vào trò chơi/ }).click();
+  await page.getByLabel("Địa chỉ máy chủ").fill("http://127.0.0.1:4351");
   await page.getByRole("button", { name: "Đăng ký", exact: true }).click();
   await page.getByLabel("Gmail", { exact: true }).fill("sample@gmail.com");
   await page.getByLabel("Tên tài khoản", { exact: true }).fill("bach_lien");
   await page.getByLabel("Mật khẩu", { exact: true }).fill("sample-password");
   await page.getByLabel("Nhập lại mật khẩu").fill("wrong-password");
-  await page.getByRole("button", { name: /Tạo tài khoản mẫu/ }).click();
+  await page.getByRole("button", { name: /Tạo tài khoản/ }).click();
   await expect(page.getByRole("alert")).toContainText("chưa trùng khớp");
   await page.getByLabel("Nhập lại mật khẩu").fill("sample-password");
-  await page.getByRole("button", { name: /Tạo tài khoản mẫu/ }).click();
+  await page
+    .getByRole("button", { name: /Trải nghiệm với nhân vật mẫu/ })
+    .click();
   await page.getByLabel("Tên nhân vật", { exact: true }).fill("Bạch Liên");
   await page.getByRole("button", { name: "Mộc", exact: true }).click();
   await expect(
@@ -61,12 +64,7 @@ test("title, account registration, character creation and returning player login
   await page.getByRole("button", { name: "Đóng", exact: true }).click();
   await page.getByRole("button", { name: "Đăng xuất" }).click();
   await page.getByRole("button", { name: "Đăng nhập tài khoản cũ" }).click();
-  await page.getByLabel("Gmail hoặc tên tài khoản").fill("sample@gmail.com");
-  await page.getByLabel("Mật khẩu", { exact: true }).fill("sample-password");
-  await page.getByRole("button", { name: /Tiếp tục hành trình/ }).click();
-  await expect(
-    page.getByRole("heading", { name: "Khởi một tiên duyên" }),
-  ).toBeVisible();
+  await expect(page.getByLabel("Gmail hoặc tên tài khoản")).toBeVisible();
   expect(missing).toEqual([]);
 });
 
@@ -256,15 +254,27 @@ test("manual combat levels up and successfully travels through the portal", asyn
         Number(
           await page.getByTestId("game-map").getAttribute("data-player-x"),
         ),
-      { timeout: 10000 },
+      { timeout: 10000, intervals: [25] },
     )
     .toBeGreaterThan(1180);
   await page.keyboard.up("d");
   await page.keyboard.down("w");
+  try {
+    await expect
+      .poll(
+        async () =>
+          Number(
+            await page.getByTestId("game-map").getAttribute("data-player-y"),
+          ),
+        { timeout: 10000, intervals: [25] },
+      )
+      .toBeLessThan(520);
+  } finally {
+    await page.keyboard.up("w");
+  }
   await expect(
     page.getByRole("region", { name: "Cổng chuyển map" }),
   ).toBeVisible();
-  await page.keyboard.up("w");
   await page.getByRole("button", { name: /Trúc Ảnh Lâm · Cấp 2/ }).click();
   await expect(
     page.getByRole("heading", { name: "Trúc Ảnh Lâm", exact: true }),

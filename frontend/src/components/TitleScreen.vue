@@ -94,12 +94,16 @@ const landscape = art("bg-title.webp"),
           <span class="server-light"></span> Thanh Vân · S01
           <small>Đang chọn · Thông thoáng</small>
         </button>
-        <p>Hiện có một máy chủ mẫu. Chưa kết nối máy chủ thật.</p></template
+        <p>
+          Chọn địa chỉ backend trên màn đăng nhập để kết nối máy chủ thật. Chế
+          độ trải nghiệm mẫu chạy độc lập.
+        </p></template
       ><template v-else
         ><p>Chào mừng đạo hữu đến với bản trải nghiệm Tiên Linh Giới.</p>
         <p>
           Tạo nhân vật, chọn ngũ hành và tông môn, khám phá Thanh Vân Cốc. Đăng
-          nhập và tiến trình đều dùng dữ liệu mẫu trong phiên này.
+          nhập trực tuyến dùng dữ liệu máy chủ. Nút trải nghiệm chạy với dữ liệu
+          mẫu trong phiên này.
         </p></template
       ></ModalDialog
     >

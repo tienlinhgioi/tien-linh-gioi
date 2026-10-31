@@ -1,0 +1,141 @@
+.online-menu {
+  position: absolute;
+  right: 25px;
+  top: 255px;
+  width: 190px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 7px;
+}
+.online-menu button {
+  background: #f5f1dfdd;
+  border: 1px solid #9eaf8c;
+  border-radius: 3px;
+  padding: 10px 6px;
+  color: #4f7153;
+  font-size: 10px;
+  position: relative;
+}
+.online-menu b {
+  font-size: 8px;
+  background: #9f7758;
+  color: #fff4d3;
+  border-radius: 50%;
+  padding: 2px 4px;
+  margin-left: 4px;
+}
+.online-disconnected {
+  position: absolute;
+  z-index: 25;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  background: #e2e7d4e8;
+  color: #476c52;
+  padding: 30px;
+  text-align: center;
+  gap: 20px;
+}
+.online-disconnected button {
+  background: #426b53;
+  color: #f6f1df;
+  padding: 12px 25px;
+  border-radius: 4px;
+}
+.online-chat {
+  pointer-events: auto;
+}
+.online-chat select {
+  font: 10px var(--font-sans);
+  background: #e6eddb;
+  color: #4a7052;
+  border: 0;
+  padding: 4px;
+  border-radius: 3px;
+}
+.online-chat form {
+  flex-wrap: wrap;
+}
+.online-chat input {
+  flex: 1 1 120px;
+}
+.online-world .game-currencies {
+  max-width: 40%;
+  overflow: auto;
+}
+.online-world .game-canvas {
+  touch-action: none;
+}
+@media (max-width: 700px) {
+  .online-menu {
+    width: 155px;
+    right: 12px;
+    top: 205px;
+    gap: 4px;
+  }
+  .online-menu button {
+    font-size: 8px;
+    padding: 7px 4px;
+  }
+  .online-world .game-chat {
+    width: 225px;
+  }
+  .online-world .game-chat > p {
+    font-size: 8px;
+  }
+  .online-world .target-hud {
+    top: 128px;
+    width: 150px;
+  }
+  .online-world .game-currencies {
+    max-width: 48%;
+  }
+}
+@media (max-height: 550px) and (min-width: 701px) {
+  .online-menu {
+    top: 205px;
+    right: 12px;
+    width: 175px;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 3px;
+  }
+  .online-menu button {
+    padding: 7px 3px;
+    font-size: 7px;
+  }
+  .online-world .game-currencies {
+    top: 94px;
+    left: 16px;
+    right: auto;
+    max-width: 215px;
+  }
+  .online-world .game-chat {
+    left: 145px;
+    bottom: 42px;
+    width: 205px;
+  }
+  .online-world .target-hud {
+    top: 85px;
+  }
+}
+@media (max-height: 550px) and (min-width: 701px) {
+  .online-menu {
+    top: 12px;
+    left: 280px;
+    right: 165px;
+    bottom: auto;
+    width: auto;
+    display: flex;
+    overflow-x: auto;
+    gap: 5px;
+    padding-bottom: 5px;
+    scrollbar-width: thin;
+  }
+  .online-menu button {
+    flex: 0 0 63px;
+    font-size: 8px;
+    padding: 10px 5px;
+  }
+}

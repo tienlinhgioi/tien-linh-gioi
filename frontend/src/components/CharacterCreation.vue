@@ -4,6 +4,7 @@ import { elements, sects, validateCharacterName } from "../data/sects";
 import type { CharacterProfile, ElementId } from "../data/sects";
 import { art } from "../data/art";
 import ElementIcon from "./ElementIcon.vue";
+defineProps<{ busy?: boolean; serverError?: string; online?: boolean }>();
 const emit = defineEmits<{ create: [profile: CharacterProfile]; back: [] }>();
 const name = ref("Thanh Vân"),
   element = ref<ElementId>("thuy"),
@@ -32,7 +33,9 @@ function submit() {
 </script>
 <template>
   <section class="creation-page">
-    <button class="back-link" @click="emit('back')">← Trở về đăng nhập</button>
+    <button class="back-link" :disabled="busy" @click="emit('back')">
+      ← Trở về đăng nhập
+    </button>
     <div class="creation-heading">
       <p class="section-eyebrow">ĐẶT MỘT ĐẠO DANH · KẾT MỘT TIÊN DUYÊN</p>
       <h1>Khởi một tiên duyên</h1>
@@ -120,12 +123,18 @@ function submit() {
             </button>
           </div>
         </fieldset>
-        <p v-if="error" role="alert" class="form-error">{{ error }}</p>
-        <button class="enter-world" type="submit">
+        <p v-if="error || serverError" role="alert" class="form-error">
+          {{ error || serverError }}
+        </p>
+        <button class="enter-world" type="submit" :disabled="busy">
           Tạo nhân vật · Vào tiên giới →
         </button>
         <p class="creation-note">
-          Chưa kết nối backend. Nhân vật chỉ tồn tại trong phiên hiện tại.
+          {{
+            online
+              ? "Tên nhân vật lưu trên server. Ngũ hành, tông môn và avatar hiện là lựa chọn hiển thị cục bộ."
+              : "Chế độ mẫu: tiến trình chỉ tồn tại trong phiên hiện tại."
+          }}
         </p>
       </div>
     </form>

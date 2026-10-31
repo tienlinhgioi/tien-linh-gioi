@@ -4,7 +4,7 @@
 
 Tiên Linh Giới là dự án game nhập vai tu tiên 2D trên trình duyệt, lấy cảm hứng từ phong cách anime tiên cảnh thanh nhã với sắc xanh ngọc và trắng ngà. Người chơi điều khiển nhân vật trong thế giới nhìn từ trên xuống, khám phá bản đồ, chiến đấu với yêu thú và tích lũy tu vi trên hành trình tiên đạo.
 
-Dự án gồm frontend có thể chơi thử và backend realtime được phát triển riêng. **Frontend hiện dùng dữ liệu mẫu, chưa kết nối backend**; đăng nhập, đăng ký và chat trên giao diện là mô phỏng, tiến trình đặt lại khi tải trang hoặc đăng xuất.
+Dự án gồm frontend và backend realtime. **Chế độ trực tuyến đã nối API và Socket.io**: nhập URL backend HTTPS trên màn đăng nhập hoặc cấu hình `VITE_BACKEND_URL` khi build. Cần triển khai server Node và cấu hình database/CORS để chơi thật. **Trải nghiệm với nhân vật mẫu** là chế độ offline riêng, không lưu tiến trình lên server.
 
 ## Hình ảnh game
 
@@ -54,7 +54,7 @@ Bố cục dọc với joystick cảm ứng, nút đánh thường, Kiếm Khí 
 - Trang bị, cửa hàng NPC, bang hội, bạn bè, chặn người chơi, chat riêng và giao dịch.
 - Workflow GitHub Actions dựng MySQL và chạy bộ kiểm thử backend khi có thay đổi liên quan.
 
-Các tính năng backend trên chưa được tích hợp vào bản chơi frontend. Thông số và nội dung game vẫn đang dùng dữ liệu mẫu trong giai đoạn phát triển.
+Các chức năng backend được truy cập qua các bảng Túi đồ, Trang bị, Công pháp, Cửa hàng, Bang hội, Đạo hữu, Giao dịch và Thiên hạ trong chế độ trực tuyến. Nội dung game vẫn ở giai đoạn phát triển; backend chưa lưu ngũ hành/tông môn/avatar và chưa có nhiệm vụ.
 
 ## Công nghệ
 
@@ -79,7 +79,7 @@ npm ci
 npm run dev
 ```
 
-Vite mặc định chạy ở cổng **5173**. Bấm **Vào trò chơi**, chọn đăng nhập mẫu hoặc trải nghiệm, rồi tạo nhân vật để vào Thanh Vân Cốc. Không cần khởi động backend, cài MySQL hay cung cấp tài khoản thật cho bản mẫu.
+Vite mặc định chạy ở cổng **5173**. Bấm **Vào trò chơi**, chọn đăng nhập mẫu hoặc trải nghiệm, rồi tạo nhân vật để vào Thanh Vân Cốc. Không cần backend cho chế độ mẫu. Để đăng nhập thật, nhập URL máy chủ đã triển khai; xem [hướng dẫn tích hợp](docs/backend-integration.md).
 
 | Thao tác    | PC                  | Mobile            |
 | ----------- | ------------------- | ----------------- |
@@ -117,7 +117,7 @@ npm run seed
 npm run dev
 ```
 
-Backend mặc định dùng cổng **3000**. Khởi động backend không tự kết nối bản frontend mẫu; phần tích hợp API và Socket.io là bước phát triển tiếp theo. Xem [tài liệu backend](backend/README.md) để biết cấu hình, hợp đồng API và các lệnh kiểm thử cần server đang chạy.
+Backend mặc định dùng cổng **3000**. Đặt URL backend trong `VITE_BACKEND_URL` hoặc nhập trên màn đăng nhập để chơi trực tuyến. Nếu giao diện chạy HTTPS, backend cũng phải phục vụ HTTPS. Xem [tài liệu backend](backend/README.md) để biết cấu hình, hợp đồng API và các lệnh kiểm thử cần server đang chạy.
 
 ## Cấu trúc và tài liệu
 

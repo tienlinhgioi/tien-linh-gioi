@@ -51,11 +51,11 @@ Playwright tự chạy production preview. Kiểm tra đăng ký/xác nhận m�
 
 ## Dữ liệu mẫu và backend
 
-Đăng nhập/đăng ký là **mô phỏng**, không xác thực tài khoản thật. Không lưu/gửi mật khẩu, không gọi API hay Socket.io. Nút trải nghiệm đi đến tạo nhân vật với tên gợi ý Thanh Vân. Mọi tiến trình và chat nằm trong bộ nhớ, đặt lại khi tải trang/đăng xuất; chưa có multiplayer.
+Đăng nhập/đăng ký hiện gọi backend thật khi nhập địa chỉ máy chủ. Chỉ nút **Trải nghiệm với nhân vật mẫu** chạy offline, không gọi API/Socket.io hay lưu tài khoản. Nút trải nghiệm đi đến tạo nhân vật với tên gợi ý Thanh Vân. Trong chế độ mẫu, tiến trình/chat nằm trong bộ nhớ và đặt lại khi tải trang/đăng xuất. Chế độ trực tuyến có multiplayer và lưu dữ liệu trên server.
 
-Backend hiện có tại `../backend`: Express, Socket.io với msgpack, Prisma/MySQL. Giữ nguyên toàn bộ backend. Xem `../backend/README.md` cho API đăng ký `{ email, username, password }`, đăng nhập `{ account, password }`, các sự kiện map/move/cast/loot/inventory/shop/guild.
+Backend hiện có tại `../backend`: Express, Socket.io với msgpack, Prisma/MySQL. Không thay đổi backend trong đợt tích hợp frontend này. Xem `../backend/README.md` cho API đăng ký `{ email, username, password }`, đăng nhập `{ account, password }`, các sự kiện map/move/cast/loot/inventory/shop/guild.
 
-Khi tích hợp thật cần tách đạo danh hiển thị khỏi `username` (3–20 ký tự ASCII/chữ số/gạch dưới), thêm email khi đăng ký, dùng token Socket.io, nhận vị trí/quái/sát thương/túi đồ từ server và xử lý `move:rejected`. Gameplay mẫu hiện có hằng số và nhiệm vụ cục bộ, chưa dùng logic hay dữ liệu server. Chưa có giao dịch, bang hội, cửa hàng hay lưu tiến trình thật trong frontend này.
+Chế độ trực tuyến đã tách tên tài khoản khỏi tên nhân vật, gửi email khi đăng ký, dùng token Socket.io và nhận vị trí/quái/sát thương/túi đồ từ server, bao gồm `move:rejected`. Giao dịch, bang hội và cửa hàng đã có giao diện riêng. Các hằng số/nhiệm vụ cục bộ chỉ còn dùng trong chế độ offline.
 
 ## Cày quái và chuyển vùng
 
@@ -76,3 +76,19 @@ Tọa Vực gồm điểm khởi đầu Thanh Vân Cốc; Vong Vực và Sơn V�
 Ảnh tùy chọn và kích thước: xem `public/art/README.md`. Không có ảnh vẫn hiện nền CSS thủy mặc và SVG ngũ hành tự vẽ, không request file thiếu. Có ảnh thì Vite tự phát hiện khi build; dev tự restart khi thêm/xóa. Đường dẫn dùng BASE_URL. Font Dancing Script được đóng gói cục bộ, đủ dấu tiếng Việt; giấy phép OFL trong `src/assets/OFL.txt`.
 
 Kiểm tra Pages: `npm run build -- --base=/tien-linh-gioi/`. Không phụ thuộc ảnh hoặc font CDN. Các ảnh hiện trong README là ảnh chụp ứng dụng, không lấy từ trang tham khảo. `lotrinh2.md` chưa có trong checkout; HUD được làm theo các yêu cầu cụ thể của `docs/frontend-brief.md`.
+
+## Kết nối backend thật
+
+Đăng nhập/đăng ký mặc định gọi API thật tới **Địa chỉ máy chủ** bạn nhập. Có thể đặt `VITE_BACKEND_URL` lúc build (xem `.env.example`). GitHub Pages đọc repository variable cùng tên trong Settings → Secrets and variables → Actions → Variables; đây là URL công khai, không phải secret. Không đưa DATABASE_URL, JWT_SECRET hay mật khẩu vào biến frontend.
+
+Máy chủ cần HTTPS khi giao diện chạy trên HTTPS; CORS `CLIENT_ORIGIN` phải trỏ đúng origin giao diện (Pages: `https://tienlinhgioi.github.io`). Sau khi đăng nhập, frontend dùng Socket.io cùng MessagePack và JWT qua `auth.token`, nhận nhân vật đã có hoặc cho tạo nhân vật. JWT chỉ lưu sessionStorage của tab, không lưu mật khẩu. URL công khai được nhớ trên thiết bị. Ngũ hành/tông môn/avatar hiện lưu cục bộ vì backend chưa có trường tương ứng.
+
+Màn trực tuyến sử dụng trạng thái server cho vị trí, người chơi trong tầm nhìn, quái, HP, hồi sinh, tu vi, tiền và chiến lợi phẩm. Di chuyển có dự đoán hiển thị và xử lý `move:rejected`; không tự tính sát thương hay tự cộng vật phẩm. Mất kết nối khóa thao tác và nối lại đồng bộ map. Các bảng chức năng hỗ trợ túi đồ/dùng/bỏ vật phẩm, 5 ô trang bị, học/thi triển kỹ năng, cửa hàng NPC, đột phá, bang hội và phân quyền, kết bạn/chặn/truyền âm, giao dịch hai chiều/xác nhận/hủy, các kênh chat và chuyển map theo ID server.
+
+**Trải nghiệm với nhân vật mẫu** là chế độ offline riêng, không xác thực hay ghi dữ liệu thật. Các đoạn mô tả bản mẫu trước đây trong tài liệu chỉ áp dụng chế độ này. Nhiệm vụ tự sinh và cổng khóa cấp của bản mẫu không được giả làm chức năng server: backend hiện chưa có API nhiệm vụ; map trực tuyến và đột phá theo đúng luật server.
+
+Đồ họa thử WebGL2 → WebGL1 → Canvas với canvas mới ở mỗi lần thử. Khi GPU không khởi tạo được, vẫn có thể chơi bằng Canvas; giảm resolution và tắt antialias trên thiết bị yếu. Lỗi mở màn không còn kết luận mọi trường hợp là thiếu WebGL.
+
+### Kiểm thử kết nối
+
+`npm test` bao gồm kiểm tra vòng đời HTTP/Socket, timeout, ngắt/nối lại và push từ server. `npm run test:e2e` khởi động production preview cùng **contract fixture** HTTP/Socket.io trong `e2e/fixtures/backend.mjs`: đây là server bộ nhớ dành cho test UI, không phải backend Prisma hay máy chủ production. Kiểm thử renderer giả lập GPU không cấp context/WebGL1-only/không có WebGL. Để xác minh database và toàn bộ quy tắc thực tế, chạy backend theo `../backend/README.md` và các integration suite backend.

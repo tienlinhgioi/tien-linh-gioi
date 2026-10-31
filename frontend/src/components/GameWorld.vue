@@ -9,6 +9,10 @@ import {
   canEnterRegion,
   facingDirection,
 } from "../data/game";
+import {
+  createGameApplication,
+  destroyGameApplication,
+} from "../game/renderer";
 import ModalDialog from "./ModalDialog.vue";
 import {
   ATTACK_RANGE,
@@ -522,10 +526,9 @@ onMounted(async () => {
   window.addEventListener("keyup", keyup);
   window.addEventListener("blur", resetInput);
   if (!host.value) return;
-  const instance = new Application();
-  app = instance;
+  let instance: Application | undefined;
   try {
-    await instance.init({
+    const created = await createGameApplication({
       resizeTo: host.value,
       background: 0xc6d4ab,
       antialias: true,
@@ -533,6 +536,8 @@ onMounted(async () => {
       resolution: Math.min(devicePixelRatio, 2),
       preference: "webgl",
     });
+    instance = created.app;
+    app = instance;
     if (disposed) {
       instance.destroy(true, { children: true });
       return;
@@ -645,7 +650,7 @@ onMounted(async () => {
     const resize = () => {
       if (!host.value || !world) return;
       const { width, height } = host.value.getBoundingClientRect();
-      instance.renderer.resize(width, height);
+      instance!.renderer.resize(width, height);
       world.scale.set(width < 700 ? 0.93 : 1.05);
     };
     resizeObserver = new ResizeObserver(resize);
@@ -658,7 +663,7 @@ onMounted(async () => {
   } catch (error) {
     failure.value = true;
     console.error("Không thể khởi tạo bản đồ PixiJS:", error);
-    if (instance.renderer) instance.destroy(true, { children: true });
+    if (instance) destroyGameApplication(instance);
     app = undefined;
   }
 });
@@ -918,8 +923,8 @@ onBeforeUnmount(() => {
       <span>☁︎</span>
       <h1>Chưa thể mở tiên cảnh</h1>
       <p>
-        Trình duyệt cần hỗ trợ WebGL để chơi. Hãy thử tải lại hoặc bật tăng tốc
-        đồ họa.
+        Không khởi tạo được màn chơi dù đã thử WebGL và Canvas. Hãy thử lại hoặc
+        báo lỗi này cho chủ dự án.
       </p>
       <button class="primary-button" @click="emit('logout')">
         Trở về đăng nhập

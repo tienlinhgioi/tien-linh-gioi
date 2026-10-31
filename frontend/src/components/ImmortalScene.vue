@@ -1,6 +1,10 @@
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref } from "vue";
-import { Application, Container, Graphics } from "pixi.js";
+import { type Application, Container, Graphics } from "pixi.js";
+import {
+  createGameApplication,
+  destroyGameApplication,
+} from "../game/renderer";
 
 const host = ref<HTMLDivElement>();
 const unavailable = ref(false);
@@ -10,22 +14,17 @@ let disposed = false;
 
 onMounted(async () => {
   if (!host.value) return;
-  const instance = new Application();
-  app = instance;
   try {
-    await instance.init({
+    const { app: instance } = await createGameApplication({
       width: 1400,
       height: 850,
       backgroundAlpha: 0,
-      antialias: true,
-      resolution: Math.min(devicePixelRatio, 2),
-      autoDensity: true,
-      preference: "webgl",
     });
     if (disposed) {
-      instance.destroy(true, { children: true });
+      destroyGameApplication(instance);
       return;
     }
+    app = instance;
     host.value.appendChild(instance.canvas);
     const world = new Container();
     instance.stage.addChild(world);
@@ -223,14 +222,15 @@ onMounted(async () => {
     resize();
   } catch {
     unavailable.value = true;
-    if (instance.renderer) instance.destroy(true, { children: true });
+    if (app) destroyGameApplication(app);
     app = undefined;
   }
 });
 onBeforeUnmount(() => {
   disposed = true;
   observer?.disconnect();
-  if (app?.renderer) app.destroy(true, { children: true });
+  if (app) destroyGameApplication(app);
+  app = undefined;
 });
 </script>
 

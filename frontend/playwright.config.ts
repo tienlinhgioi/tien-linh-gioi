@@ -35,9 +35,9 @@ export default defineConfig({
       },
     },
   ],
-  webServer: {
+  webServer: [{
     command: "npm run preview -- --port 4173 --strictPort",
     port: 4173,
     reuseExistingServer: !process.env.CI,
-  },
+  }, {command:"node e2e/fixtures/backend.mjs",url:"http://127.0.0.1:4351/health",reuseExistingServer:!process.env.CI}],
 });

@@ -763,5 +763,26 @@
     top: 132px;
   }
 }
-.realm-list{flex-wrap:nowrap;overflow-x:auto;padding:5px 2px 12px}.realm-list span{flex-shrink:0}
-@media(max-height:550px) and (min-width:701px){.region-route{top:65px}}
+.realm-list {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  padding: 5px 2px 12px;
+}
+.realm-list span {
+  flex-shrink: 0;
+}
+@media (max-height: 550px) and (min-width: 701px) {
+  .region-route {
+    top: 65px;
+  }
+}
+.server-hint {
+  display: block;
+  color: #87977e;
+  font-size: 8px;
+  line-height: 1.7;
+  margin-top: 6px;
+}
+.auth-card form > input:disabled {
+  opacity: 0.65;
+}

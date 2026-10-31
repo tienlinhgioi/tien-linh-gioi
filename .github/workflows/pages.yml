@@ -31,6 +31,8 @@ jobs:
       - run: npm test
       # GitHub Pages phục vụ ở /<tên repo>/ nên build với base tương ứng
       - run: npm run build -- --base=/${{ github.event.repository.name }}/
+        env:
+          VITE_BACKEND_URL: ${{ vars.VITE_BACKEND_URL }}
       - uses: actions/upload-pages-artifact@v3
         with:
           path: frontend/dist

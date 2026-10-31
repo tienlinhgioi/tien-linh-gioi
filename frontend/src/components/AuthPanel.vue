@@ -1,6 +1,24 @@
 <script setup lang="ts">
 import { ref } from "vue";
-const emit = defineEmits<{ enter: [name: string] }>();
+const props = defineProps<{
+  busy?: boolean;
+  serverError?: string;
+  endpoint?: string;
+}>();
+const emit = defineEmits<{
+  enter: [name: string];
+  authenticate: [
+    mode: "login" | "register",
+    credentials: {
+      account: string;
+      email: string;
+      username: string;
+      password: string;
+    },
+    endpoint: string,
+  ];
+}>();
+const backend = ref(props.endpoint || "");
 const mode = ref<"login" | "register">("login");
 const account = ref(""),
   email = ref(""),
@@ -34,8 +52,15 @@ function submit() {
     return;
   }
   emit(
-    "enter",
-    mode.value === "register" ? username.value : account.value.trim(),
+    "authenticate",
+    mode.value,
+    {
+      account: account.value.trim(),
+      email: email.value.trim(),
+      username: username.value,
+      password: password.value,
+    },
+    backend.value.trim(),
   );
 }
 </script>
@@ -46,7 +71,9 @@ function submit() {
     <h1 id="auth-title">
       {{ mode === "login" ? "Trở về tiên cảnh" : "Kết một tiên duyên" }}
     </h1>
-    <p class="auth-intro">Đăng nhập mẫu, chưa xác thực tài khoản thật.</p>
+    <p class="auth-intro">
+      Đăng nhập máy chủ để lưu nhân vật và chơi cùng đạo hữu.
+    </p>
     <div class="auth-tabs">
       <button
         :class="{ selected: mode === 'login' }"
@@ -67,6 +94,17 @@ function submit() {
       </button>
     </div>
     <form @submit.prevent="submit">
+      <label for="backend-url">Địa chỉ máy chủ</label
+      ><input
+        id="backend-url"
+        v-model="backend"
+        type="url"
+        required
+        placeholder="https://may-chu-cua-ban.example"
+        :disabled="busy"
+      /><small class="server-hint"
+        >URL backend do chủ dự án cung cấp. Không nhập mật khẩu database.</small
+      >
       <template v-if="mode === 'register'"
         ><label for="email">Gmail</label
         ><input
@@ -112,18 +150,31 @@ function submit() {
           autocomplete="new-password"
           required
       /></template>
-      <p v-if="error" class="form-error" role="alert">{{ error }}</p>
-      <button type="submit" class="primary-button auth-submit">
-        {{ mode === "login" ? "Tiếp tục hành trình" : "Tạo tài khoản mẫu" }} →
+      <p v-if="error || serverError" class="form-error" role="alert">
+        {{ error || serverError }}
+      </p>
+      <button type="submit" class="primary-button auth-submit" :disabled="busy">
+        {{
+          busy
+            ? "Đang kết nối…"
+            : mode === "login"
+              ? "Tiếp tục hành trình"
+              : "Tạo tài khoản"
+        }}
+        →
       </button>
     </form>
     <div class="auth-divider"><span>khám phá không cần tài khoản</span></div>
-    <button class="guest-button" @click="emit('enter', 'Đạo hữu')">
+    <button
+      class="guest-button"
+      :disabled="busy"
+      @click="emit('enter', 'Đạo hữu')"
+    >
       Trải nghiệm với nhân vật mẫu ↗
     </button>
     <p class="demo-note">
-      Không xác minh Gmail, không lưu hay gửi mật khẩu.<br />Tạo nhân vật ở bước
-      tiếp theo.
+      Đăng nhập thật gửi thông tin qua HTTPS đến máy chủ đã chọn.<br />Chế độ
+      trải nghiệm phía trên dùng dữ liệu mẫu, không kết nối server.
     </p>
   </section>
 </template>
